@@ -6,6 +6,7 @@ from flask_login import current_user
 from functools import wraps
 from repositories.base import get_db_connection
 from utils import logger
+from repositories.grid_repo import get_all_grids
 
 # ==================== 资源与操作定义 ====================
 RESOURCES = {
@@ -145,3 +146,15 @@ def check_user_grid_permission(building_id: int) -> bool:
     except Exception as e:
         logger.error(f"网格权限检查失败: {e}")
     return False
+
+
+
+def get_user_grid_ids(user):
+    if not user.is_authenticated:
+        return []
+    if getattr(user, 'role', None) == 'admin':
+        grids = get_all_grids()
+        return [g['id'] for g in grids]
+    if hasattr(user, 'grid_id') and user.grid_id:
+        return [user.grid_id]
+    return []

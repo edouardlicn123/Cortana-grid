@@ -143,3 +143,23 @@ def get_all_grids(include_deleted=False):
 
 def get_grid_by_id(grid_id: int):
     return get_grid_basic(grid_id)
+
+def get_user_grid_ids(user):
+    """
+    根据当前用户权限返回他有权访问的网格ID列表
+    - 超级管理员：返回所有网格
+    - 普通网格员：返回所属网格
+    """
+    if not user.is_authenticated:
+        return []
+
+    # 超级管理员或有全局权限的用户
+    if user.role == 'admin' or hasattr(user, 'can_view_all_grids'):
+        grids = get_all_grids()
+        return [grid['id'] for grid in grids]
+
+    # 普通用户：只返回自己负责的网格
+    if user.grid_id:
+        return [user.grid_id]
+
+    return []

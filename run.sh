@@ -103,5 +103,54 @@ echo -e "${CYAN}访问地址：http://127.0.0.1:5000${NC}"
 echo -e "${CYAN}按 Ctrl+C 停止服务${NC}"
 echo "========================================"
 
-# 前台运行（推荐开发模式，便于看到日志和 Ctrl+C 停止）
-exec "$PYTHON" app.py
+# 前台运行 Flask 应用
+exec "$PYTHON" app.py &
+
+APP_PID=$!
+
+# 等待服务启动（最多等待15秒）
+echo -e "${YELLOW}等待服务启动...${NC}"
+for i in {1..30}; do
+    if curl -s http://127.0.0.1:5000 >/dev/null 2>&1; then
+        echo -e "${GREEN}服务已就绪！正在自动打开浏览器...${NC}"
+        
+        # ==================== 自动打开浏览器新标签页 ====================
+        URL="http://127.0.0.1:5000"
+        
+        # Linux 系统（优先级最高）
+        if command -v xdg-open >/dev/null 2>&1; then
+            # xdg-open 默认在新标签页打开（大多数现代桌面环境如此）
+            xdg-open "$URL" && echo -e "${CYAN}已通过 xdg-open 打开新标签页${NC}"
+        
+        # macOS
+        elif [[ "$(uname)" == "Darwin" ]]; then
+            open "$URL" && echo -e "${CYAN}已通过 open 打开新标签页${NC}"
+        
+        # Windows (WSL)
+        elif command -v powershell.exe >/dev/null 2>&1; then
+            powershell.exe -Command "Start-Process '$URL' -WindowStyle Normal" && echo -e "${CYAN}已通过 PowerShell 打开新标签页${NC}"
+        
+        # 备用方案：尝试 python 控制浏览器
+        elif "$PYTHON" -c "import webbrowser" 2>/dev/null; then
+            "$PYTHON" -c "import webbrowser, time; time.sleep(0.5); webbrowser.open_new_tab('$URL')" && echo -e "${CYAN}已通过 Python webbrowser 打开新标签页${NC}"
+        
+        else
+            echo -e "${YELLOW}无法自动打开浏览器，请手动访问：$URL${NC}"
+        fi
+        
+        break
+    fi
+    sleep 0.5
+done
+
+# 如果30次还没启动成功，给出提示
+if ! curl -s http://127.0.0.1:5000 >/dev/null 2>&1; then
+    echo -e "${RED}警告：服务启动超时，请检查是否端口被占用或 app.py 有错误${NC}"
+fi
+
+# 前台等待用户 Ctrl+C 停止
+wait $APP_PID
+
+echo ""
+echo -e "${CYAN}Cortana Grid 已停止，Good job, Chief。${NC}"
+deactivate 2>/dev/null || true
