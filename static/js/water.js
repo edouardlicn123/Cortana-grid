@@ -1,78 +1,101 @@
+(function () {
+    let username = window.watermarkUsername || '未知用户';  // 这里实际注入的是 real_name
 
-// 全屏用户名水印（砖墙交错版 - background-repeat 可靠实现，2026-01-04）
-(function() {
-    let username = (window.current_username || '未知用户').trim();
-    if (!username) username = 'CortanaGrid';
+    function createWatermark() {
+        // 组合显示：用户名(作为备用) + 真实姓名
+        // 如果 real_name 为空，则只显示 username
+        const displayName = username.trim();
+        const text = displayName;  // 可以根据需要改成 `${current_user.username} ${displayName}`
 
-    // 参数（三倍密度、砖墙交错、固定透明度）
-    const fontSize = 22;
-    const color = 'rgba(0, 0, 0, 0.03)';
-    const angle = -25;
-    const density = 120;  // 横向间距
-    const rowHeight = 85; // 纵向间距
-    const stagger = density / 2; // 交错偏移
+        // 砖块叠加极密设置
+        const tileWidth = 120;   // 越小越密，可继续调小到 110 或 100
+        const tileHeight = 50;
 
-    // 生成单层图案（一行多个用户名）
-    function createPattern(offset = 0) {
         const canvas = document.createElement('canvas');
-        canvas.width = density * 6;  // 足够宽确保无缝
-        canvas.height = rowHeight;
+        canvas.width = tileWidth * 2;   // 双倍用于错位叠加
+        canvas.height = tileHeight * 2;
 
         const ctx = canvas.getContext('2d');
-        ctx.font = `bold ${fontSize}px Arial`;
-        ctx.fillStyle = color;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
 
-        for (let x = density / 2 + offset; x < canvas.width; x += density) {
-            ctx.fillText(username, x, rowHeight / 2);
+        // 多层错位绘制同一姓名，实现砖墙式密集叠加
+        const positions = [
+            {x: tileWidth / 2, y: tileHeight / 2},                   // 主位置
+            {x: tileWidth / 2 + tileWidth, y: tileHeight / 2},       // 右偏移
+            {x: tileWidth / 2, y: tileHeight / 2 + tileHeight},     // 下偏移
+            {x: tileWidth / 2 + tileWidth, y: tileHeight / 2 + tileHeight}, // 对角
+            {x: tileWidth, y: tileHeight},                         // 额外叠加增强密度
+        ];
+
+        positions.forEach(pos => {
+            ctx.save();
+            ctx.translate(pos.x, pos.y);
+            ctx.rotate(-30 * Math.PI / 180);  // 倾斜角度
+            ctx.font = '11px Arial, sans-serif';  // 视觉约 10px，小巧清晰
+            ctx.fillStyle = 'rgba(145, 145, 145, 0.21)';  // 淡灰，低调专业
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, 0, 0);
+            ctx.restore();
+        });
+
+        const overlay = document.getElementById('watermark-overlay');
+        if (overlay) {
+            overlay.style.backgroundImage = `url(${canvas.toDataURL('image/png')})`;
         }
-
-        return canvas.toDataURL('image/png');
     }
 
-    // 创建全屏层
-    function createLayer(offset = 0, z = 9999) {
-        const layer = document.createElement('div');
-        layer.style.position = 'fixed';
-        layer.style.top = '0';
-        layer.style.left = '0';
-        layer.style.width = '100vw';
-        layer.style.height = '100vh';
-        layer.style.pointerEvents = 'none';
-        layer.style.zIndex = z;
-        layer.style.backgroundImage = `url(${createPattern(offset)})`;
-        layer.style.backgroundRepeat = 'repeat';
-        layer.style.backgroundPosition = '0 0';
-        layer.style.transform = `rotate(${angle}deg)`;
-        layer.style.transformOrigin = 'center';
-        layer.style.opacity = '0.03';
-        layer.style.userSelect = 'none';
+    function initWatermark() {
+        if (document.getElementById('watermark-overlay')) return;
 
-        document.body.appendChild(layer);
-        return layer;
+        const overlay = document.createElement('div');
+        overlay.id = 'watermark-overlay';
+        overlay.style.cssText = `
+            position: fixed !important;
+            top: 0 !important; left: 0 !important;
+            width: 100vw !important; height: 100vh !important;
+            pointer-events: none !important;
+            z-index: 9999 !important;
+            background-repeat: repeat !important;
+            background-size: ${tileWidth}px ${tileHeight}px !important;
+            image-rendering: crisp-edges !important;
+            image-rendering: pixelated !important;
+        `;
+        document.body.appendChild(overlay);
+        createWatermark();
     }
 
-    // 两层实现砖墙交错
-    createLayer(0, 9999);     // 正常层
-    createLayer(stagger, 9998); // 交错层
-
-    // 定时补层防移除
-    setInterval(() => {
-        if (document.querySelectorAll('div[style*="z-index: 9999"]').length < 2) {
-            createLayer(0, 9999);
-            createLayer(stagger, 9998);
-        }
-    }, 8000);
-
-    // DOM 监控补层
-    const observer = new MutationObserver(() => {
-        if (document.querySelectorAll('div[style*="z-index: 9999"]').length < 2) {
-            createLayer(0, 9999);
-            createLayer(stagger, 9998);
+    // 防篡改观察器（被删除或隐藏立即恢复）
+    const observer = new MutationObserver((mutations) => {
+        let needRestore = false;
+        mutations.forEach((mutation) => {
+            if (mutation.type === 'childList' && !document.getElementById('watermark-overlay')) {
+                needRestore = true;
+            }
+            if (mutation.type === 'attributes' && mutation.target.id === 'watermark-overlay') {
+                const target = mutation.target;
+                if (target.style.display === 'none' || target.style.opacity === '0' ||
+                    target.style.visibility === 'hidden' || !target.style.backgroundImage) {
+                    needRestore = true;
+                }
+            }
+        });
+        if (needRestore) {
+            const existing = document.getElementById('watermark-overlay');
+            if (existing) existing.parentNode.removeChild(existing);
+            initWatermark();
         }
     });
-    observer.observe(document.body, { childList: true, subtree: true });
 
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
+
+    window.addEventListener('load', initWatermark);
+    window.addEventListener('resize', createWatermark);
+
+    // 检测姓名变化（切换用户时刷新）
+    setInterval(() => {
+        if (window.watermarkUsername !== username) {
+            username = window.watermarkUsername || '未知用户';
+            createWatermark();
+        }
+    }, 1000);
 })();
-

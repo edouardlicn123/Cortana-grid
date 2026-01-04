@@ -13,17 +13,33 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 
+<!-- 用户名水印功能开始 -->
+{% if current_user.is_authenticated %}
+<div id="watermark-overlay"></div>
+
 <style>
-    .card:hover {
-        transform: translateY(-5px);
-        transition: transform 0.3s ease;
-    }
-    .form-switch .form-check-input:checked {
-        background-color: var(--bs-primary);
-        border-color: var(--bs-primary);
+    #watermark-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        pointer-events: none;     /* 不干扰鼠标操作 */
+        z-index: 9999;            /* 最高层 */
+        background-repeat: repeat;
+        background-size: 420px 300px;  /* 与 canvas 尺寸保持一致，避免拉伸 */
     }
 </style>
 
+<!-- 注入用户名到全局变量 -->
+<script>
+    window.watermarkUsername = "{{ current_user.real_name | default(current_user.username, true) | e }}";
+</script>
+
+<!-- 引入独立的 JS 文件 -->
+<script src="{{ url_for('static', filename='js/water.js') }}" defer></script>
+{% endif %}
+<!-- 用户名水印功能结束 -->
 
 <!-- 您的其他自定义脚本 -->
 <script src="{{ url_for('static', filename='js/common.js') }}"></script>

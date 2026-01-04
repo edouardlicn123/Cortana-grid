@@ -18,10 +18,20 @@
     {% block page_styles %}{% endblock %} 
     {% include 'includes/_scripts.html' %}
 
+{% if current_user.is_authenticated %}
+<style>
+    /* 预留样式，实际由 JS 强制注入，防止 CSS 被覆盖 */
+    #watermark-overlay {
+        image-rendering: crisp-edges !important;  /* 强制锐利 */
+    }
+</style>
+
 <script>
-    // 注入当前登录用户名供水印使用
-    window.current_username = "{{ current_user.username if current_user.is_authenticated else '游客' }}";
+    window.watermarkUsername = "{{ current_user.real_name | default(current_user.username, true) | e }}";
 </script>
+
+<script src="{{ url_for('static', filename='js/water.js') }}" defer></script>
+{% endif %}
 
 </head>
 

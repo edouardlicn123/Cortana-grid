@@ -1,9 +1,8 @@
 {# templates/edit_person.html #}
-{# 新增/编辑人员共用模板 - 完整恢复CSS关联 + 开关逻辑 #}
+{# 新增/编辑人员共用模板 - 户籍详细地址改为常显、非必填，不受户籍小区/建筑选择影响 #}
 
 {% extends "base.html" %}
 {% block title %}{{ '编辑人员' if person else '添加人员' }}{% endblock %}
-
 
 {% block content %}
 <div class="container py-5">
@@ -29,18 +28,42 @@
                                 <input type="text" name="name" class="form-control form-control-lg" 
                                        value="{{ person.name if person else '' }}" required>
                             </div>
+
                             <div class="col-md-4">
                                 <label class="form-label fw-bold">身份证号</label>
-                                <input type="text" name="id_card" class="form-control form-control-lg" 
+                                <input type="text" name="id_card" id="id_card" class="form-control form-control-lg" 
                                        value="{{ person.id_card if person else '' }}" maxlength="18">
                                 <small class="text-muted">若无身份证可留空</small>
+                                <small id="id-card-error" class="text-danger d-block mt-1" style="display: none;"></small>
                             </div>
+
                             <div class="col-md-4">
                                 <label class="form-label fw-bold">性别 <span class="text-danger">*</span></label>
-                                <select name="gender" class="form-select form-select-lg" required>
+                                <select name="gender" id="gender" class="form-select form-select-lg" required>
                                     <option value="">-- 请选择 --</option>
                                     <option value="男" {% if person and person.gender == '男' %}selected{% endif %}>男</option>
                                     <option value="女" {% if person and person.gender == '女' %}selected{% endif %}>女</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label">出生日期</label>
+                                <input type="text" name="birth_date" id="birth_date" class="form-control" placeholder="YYYYMMDD"
+                                       value="{{ person.birth_date if person else '' }}" maxlength="8">
+                                <small class="text-muted">格式：YYYYMMDD（如 19900101）</small>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label">联系电话</label>
+                                <input type="text" name="phones" class="form-control" placeholder="多个用;分隔"
+                                       value="{{ person.phones if person else '' }}">
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label">人员类型</label>
+                                <select name="person_type" class="form-select">
+                                    <option value="常住人口" {% if not person or person.person_type == '常住人口' %}selected{% endif %}>常住人口</option>
+                                    <option value="流动人口" {% if person and person.person_type == '流动人口' %}selected{% endif %}>流动人口</option>
                                 </select>
                             </div>
 
@@ -73,18 +96,8 @@
                                 </div>
                             </div>
 
-                            <div class="col-md-4">
-                                <label class="form-label">出生日期</label>
-                                <input type="text" name="birth_date" class="form-control" placeholder="YYYYMMDD"
-                                       value="{{ person.birth_date if person else '' }}" maxlength="8">
-                                <small class="text-muted">格式：YYYYMMDD（如 19900101）</small>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">联系电话</label>
-                                <input type="text" name="phones" class="form-control" placeholder="多个用;分隔"
-                                       value="{{ person.phones if person else '' }}">
-                            </div>
-                            <div class="col-md-4">
+                            <!-- 现住地址 -->
+                            <div class="col-md-6">
                                 <label class="form-label fw-bold">现住小区/建筑 <span class="text-danger">*</span></label>
                                 <select name="living_building_id" class="form-select form-select-lg" required>
                                     <option value="">-- 请选择 --</option>
@@ -95,17 +108,11 @@
                                     {% endfor %}
                                 </select>
                             </div>
-                            <div class="col-12">
+
+                            <div class="col-md-6">
                                 <label class="form-label fw-bold">现住详细门牌 <span class="text-danger">*</span></label>
                                 <input type="text" name="address_detail" class="form-control form-control-lg"
                                        value="{{ person.address_detail if person else '' }}" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">人员类型</label>
-                                <select name="person_type" class="form-select">
-                                    <option value="常住人口" {% if not person or person.person_type == '常住人口' %}selected{% endif %}>常住人口</option>
-                                    <option value="流动人口" {% if person and person.person_type == '流动人口' %}selected{% endif %}>流动人口</option>
-                                </select>
                             </div>
                         </div>
                     </div>
@@ -129,10 +136,14 @@
                                     {% endfor %}
                                 </select>
                             </div>
-                            <div class="col-md-6" id="household_address_group" style="display: {% if person and person.household_address %}block{% else %}none{% endif %};">
-                                <label class="form-label">户籍详细地址（非本社区必填）</label>
-                                <input type="text" name="household_address" class="form-control"
-                                       value="{{ person.household_address if person else '' }}" placeholder="如：北京市朝阳区xx街道xx号">
+
+                            <!-- 户籍详细地址：常显、非必填 -->
+                            <div class="col-md-6">
+                                <label class="form-label">户籍详细地址</label>
+                                <input type="text" name="household_address" id="household_address" class="form-control"
+                                       value="{{ person.household_address if person else '' }}"
+                                       placeholder="如：北京市朝阳区xx街道xx号">
+                                <small class="text-muted">非本社区户籍时建议填写，可选</small>
                             </div>
 
                             <div class="col-md-4">
@@ -140,6 +151,7 @@
                                 <input type="text" name="family_id" class="form-control" 
                                        value="{{ person.family_id if person else '' }}">
                             </div>
+
                             <div class="col-md-4">
                                 <label class="form-label">户籍迁入日期</label>
                                 <input type="text" name="household_entry_date" class="form-control" placeholder="YYYYMMDD"
@@ -147,7 +159,7 @@
                             </div>
 
                             <!-- 人户分离 -->
-                            <div class="col-12">
+                            <div class="col-12 mt-4">
                                 <div class="form-check form-switch mb-4">
                                     <input class="form-check-input" type="checkbox" role="switch" id="is_separated"
                                            {% if person and person.is_separated %}checked{% endif %}>
@@ -163,7 +175,7 @@
                             </div>
 
                             <!-- 已迁出本社区 -->
-                            <div class="col-12">
+                            <div class="col-12 mt-4">
                                 <div class="form-check form-switch mb-4">
                                     <input class="form-check-input" type="checkbox" role="switch" id="is_migrated_out"
                                            {% if person and person.is_migrated_out %}checked{% endif %}>
@@ -186,7 +198,7 @@
                             </div>
 
                             <!-- 已死亡 -->
-                            <div class="col-12">
+                            <div class="col-12 mt-4">
                                 <div class="form-check form-switch mb-4">
                                     <input class="form-check-input" type="checkbox" role="switch" id="is_deceased"
                                            {% if person and person.is_deceased %}checked{% endif %}>
@@ -246,6 +258,7 @@
                                     {% endfor %}
                                 </select>
                             </div>
+
                             <div class="col-md-6">
                                 <label class="form-label">工作/学习情况</label>
                                 <select name="work_study" class="form-select">
@@ -256,6 +269,7 @@
                                     {% endfor %}
                                 </select>
                             </div>
+
                             <div class="col-md-6">
                                 <label class="form-label">健康状况</label>
                                 <select name="health" class="form-select">
@@ -272,7 +286,7 @@
                                 <textarea name="notes" class="form-control" rows="4">{{ person.notes if person else '' }}</textarea>
                             </div>
 
-                            <!-- 重点人员 -->
+                            <!-- 重点人员标记 -->
                             <div class="col-12 mt-4">
                                 <div class="form-check form-switch mb-4">
                                     <input class="form-check-input" type="checkbox" role="switch" id="is_key_person"
@@ -296,7 +310,7 @@
                                 </div>
                             </div>
 
-                            <!-- 照片上传与预览 -->
+                            <!-- 人员照片 -->
                             <div class="col-12 mt-5">
                                 <label class="form-label fw-bold">人员照片（支持多选，最多3张）</label>
                                 <input type="file" name="images" class="form-control" accept="image/*" multiple>
@@ -330,9 +344,92 @@
         </div>
     </div>
 </div>
+
+{# 身份证自动解析 + 严格校验脚本（符合 GB/T 11643-1999） #}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const idCardInput = document.getElementById('id_card');
+    const birthInput = document.getElementById('birth_date');
+    const genderSelect = document.getElementById('gender');
+    let errorTip = document.getElementById('id-card-error');
+
+    if (!idCardInput) return;
+
+    if (!errorTip) {
+        errorTip = document.createElement('small');
+        errorTip.id = 'id-card-error';
+        errorTip.className = 'text-danger d-block mt-1';
+        errorTip.style.display = 'none';
+        idCardInput.parentNode.appendChild(errorTip);
+    }
+
+    const Wi = [7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2];
+    const checkCode = '10X98765432';
+
+    function validateIdCard(id) {
+        id = id.toUpperCase().replace(/\s/g, '');
+        if (![15, 18].includes(id.length)) return '长度应为15或18位';
+        if (id.length === 15 && !/^\d{15}$/.test(id)) return '15位应全为数字';
+        if (id.length === 18 && !/^\d{17}[0-9X]$/.test(id)) return '前17位应为数字，最后一位为数字或X';
+
+        let birthStr = id.length === 15 ? '19' + id.substr(6, 6) : id.substr(6, 8);
+        const year = parseInt(birthStr.substr(0, 4), 10);
+        const month = parseInt(birthStr.substr(4, 2), 10);
+        const day = parseInt(birthStr.substr(6, 2), 10);
+
+        if (year < 1900 || year > new Date().getFullYear() + 1) return '出生年份不合法';
+        if (month < 1 || month > 12) return '出生月份不合法';
+        if (day < 1) return '出生日期不合法';
+
+        const daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+        let maxDay = daysInMonth[month - 1];
+        if (month === 2) {
+            const isLeap = (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+            if (isLeap) maxDay = 29;
+        }
+        if (day > maxDay) return '出生日期不合法（该月无此日）';
+
+        if (id.length === 18) {
+            let sum = 0;
+            for (let i = 0; i < 17; i++) sum += parseInt(id[i], 10) * Wi[i];
+            if (id[17] !== checkCode[sum % 11]) return '校验码错误，身份证号码不正确';
+        }
+
+        return '';
+    }
+
+    function processIdCard() {
+        let value = idCardInput.value.trim();
+        errorTip.style.display = 'none';
+
+        if (value === '') {
+            if (birthInput) birthInput.value = '';
+            if (genderSelect) genderSelect.value = '';
+            return;
+        }
+
+        const errorMsg = validateIdCard(value);
+        if (errorMsg) {
+            errorTip.textContent = errorMsg;
+            errorTip.style.display = 'block';
+            return;
+        }
+
+        let birthStr = value.length === 15 ? '19' + value.substr(6, 6) : value.substr(6, 8);
+        if (birthInput) birthInput.value = birthStr;
+
+        const genderIndex = value.length === 15 ? 14 : 16;
+        const genderCode = parseInt(value.charAt(genderIndex), 10);
+        const gender = genderCode % 2 === 1 ? '男' : '女';
+        if (genderSelect) genderSelect.value = gender;
+    }
+
+    idCardInput.addEventListener('input', processIdCard);
+    idCardInput.addEventListener('paste', () => setTimeout(processIdCard, 100));
+    idCardInput.addEventListener('change', processIdCard);
+    idCardInput.addEventListener('blur', processIdCard);
+
+    processIdCard();  // 加载时触发
+});
+</script>
 {% endblock %}
-
-
-
-
-

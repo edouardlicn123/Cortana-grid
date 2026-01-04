@@ -1,5 +1,5 @@
 {# templates/edit_building.html #}
-{# 完整建筑新增/编辑页面 - 参考旧版布局，覆盖所有数据库字段，支持类型动态字段 #}
+{# 最终完整版：建筑类型菜单重新排序 + 类型专用字段仅在选定类型后出现（已彻底修复显示与值保留问题） #}
 
 {% extends "base.html" %}
 {% block title %}{{ '新增小区/建筑' if not building else '编辑小区/建筑：' + building.name }}{% endblock %}
@@ -14,6 +14,7 @@
             </h2>
 
             <form method="POST">
+                <!-- 基本信息 -->
                 <div class="card shadow-sm mb-4">
                     <div class="card-header bg-primary text-white">
                         <h5 class="mb-0">基本信息（必填）</h5>
@@ -29,17 +30,18 @@
                                 <label class="form-label fw-bold">建筑类型 <span class="text-danger">*</span></label>
                                 <select name="type" id="building_type" class="form-select form-select-lg" required>
                                     <option value="">-- 请选择类型 --</option>
+                                    <!-- 排序：住宅小区 → 商业建筑 → 大型出租房 → 私人住宅 -->
                                     <option value="residential_complex" {% if building and building.type == 'residential_complex' %}selected{% endif %}>
                                         住宅小区
                                     </option>
-                                    <option value="private_residence" {% if building and building.type == 'private_residence' %}selected{% endif %}>
-                                        私人住宅
+                                    <option value="commercial" {% if building and building.type == 'commercial' %}selected{% endif %}>
+                                        商业建筑
                                     </option>
                                     <option value="large_rental" {% if building and building.type == 'large_rental' %}selected{% endif %}>
                                         大型出租房
                                     </option>
-                                    <option value="commercial" {% if building and building.type == 'commercial' %}selected{% endif %}>
-                                        商业建筑
+                                    <option value="private_residence" {% if building and building.type == 'private_residence' %}selected{% endif %}>
+                                        私人住宅
                                     </option>
                                 </select>
                             </div>
@@ -58,7 +60,7 @@
                     </div>
                 </div>
 
-                <!-- 通用信息 -->
+                <!-- 位置与基础信息 -->
                 <div class="card shadow-sm mb-4">
                     <div class="card-header bg-info text-white">
                         <h5 class="mb-0">位置与基础信息</h5>
@@ -104,7 +106,7 @@
                     </div>
                 </div>
 
-                <!-- 设施与物业 -->
+                <!-- 设施与物业信息 -->
                 <div class="card shadow-sm mb-4">
                     <div class="card-header bg-secondary text-white">
                         <h5 class="mb-0">设施与物业信息</h5>
@@ -155,60 +157,34 @@
                     </div>
                 </div>
 
-                <!-- 类型专用字段（动态显示） -->
+                <!-- 类型专用信息区块 -->
                 <div class="card shadow-sm mb-4">
                     <div class="card-header bg-success text-white">
-                        <h5 class="mb-0">类型专用信息</h5>
+                        <h5 class="mb-0">类型专用信息 <small class="opacity-75 ms-2">（选择建筑类型后显示）</small></h5>
                     </div>
                     <div class="card-body p-5">
 
                         <!-- 住宅小区专用 -->
-                        <div id="residential_fields" class="type-fields" style="display: {% if building and building.type == 'residential_complex' %}block{% else %}none{% endif %};">
+                        <div id="residential_fields" class="type-fields" style="display: none;">
                             <div class="row g-4">
                                 <div class="col-md-6">
-                                    <label class="form-label text-info">业委会联系人（小区专用）</label>
-                                    <input type="text" name="owners_committee_contact" class="form-control" value="{{ building.owners_committee_contact if building else '' }}">
+                                    <label class="form-label text-info fw-bold">业委会联系人</label>
+                                    <input type="text" name="owners_committee_contact" class="form-control"
+                                           value="{{ building.owners_committee_contact if building else '' }}">
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label text-info">业委会联系电话（小区专用）</label>
-                                    <input type="text" name="owners_committee_phone" class="form-control" value="{{ building.owners_committee_phone if building else '' }}">
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 私人住宅专用 -->
-                        <div id="private_fields" class="type-fields" style="display: {% if building and building.type == 'private_residence' %}block{% else %}none{% endif %};">
-                            <div class="row g-4">
-                                <div class="col-md-6">
-                                    <label class="form-label text-warning">业主姓名（私人住宅专用）</label>
-                                    <input type="text" name="owner_name" class="form-control" value="{{ building.owner_name if building else '' }}">
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label text-warning">业主电话（私人住宅专用）</label>
-                                    <input type="text" name="owner_phone" class="form-control" value="{{ building.owner_phone if building else '' }}">
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 大型出租房专用 -->
-                        <div id="rental_fields" class="type-fields" style="display: {% if building and building.type == 'large_rental' %}block{% else %}none{% endif %};">
-                            <div class="row g-4">
-                                <div class="col-md-6">
-                                    <label class="form-label text-purple">房东姓名（大型出租房专用）</label>
-                                    <input type="text" name="landlord_name" class="form-control" value="{{ building.landlord_name if building else '' }}">
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label text-purple">房东电话（大型出租房专用）</label>
-                                    <input type="text" name="landlord_phone" class="form-control" value="{{ building.landlord_phone if building else '' }}">
+                                    <label class="form-label text-info fw-bold">业委会联系电话</label>
+                                    <input type="text" name="owners_committee_phone" class="form-control"
+                                           value="{{ building.owners_committee_phone if building else '' }}">
                                 </div>
                             </div>
                         </div>
 
                         <!-- 商业建筑专用 -->
-                        <div id="commercial_fields" class="type-fields" style="display: {% if building and building.type == 'commercial' %}block{% else %}none{% endif %};">
+                        <div id="commercial_fields" class="type-fields" style="display: none;">
                             <div class="row g-4">
                                 <div class="col-12">
-                                    <label class="form-label text-danger">商业类型（商业建筑专用）</label>
+                                    <label class="form-label text-danger fw-bold">商业类型</label>
                                     <select name="commercial_type" class="form-select">
                                         <option value="">-- 请选择 --</option>
                                         <option value="商场" {% if building and building.commercial_type == '商场' %}selected{% endif %}>商场</option>
@@ -222,10 +198,43 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- 大型出租房专用 -->
+                        <div id="rental_fields" class="type-fields" style="display: none;">
+                            <div class="row g-4">
+                                <div class="col-md-6">
+                                    <label class="form-label text-purple fw-bold">房东姓名</label>
+                                    <input type="text" name="landlord_name" class="form-control"
+                                           value="{{ building.landlord_name if building else '' }}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-purple fw-bold">房东电话</label>
+                                    <input type="text" name="landlord_phone" class="form-control"
+                                           value="{{ building.landlord_phone if building else '' }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 私人住宅专用 -->
+                        <div id="private_fields" class="type-fields" style="display: none;">
+                            <div class="row g-4">
+                                <div class="col-md-6">
+                                    <label class="form-label text-warning fw-bold">业主姓名</label>
+                                    <input type="text" name="owner_name" class="form-control"
+                                           value="{{ building.owner_name if building else '' }}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-warning fw-bold">业主电话</label>
+                                    <input type="text" name="owner_phone" class="form-control"
+                                           value="{{ building.owner_phone if building else '' }}">
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
 
-                <!-- 地图坐标与备注 -->
+                <!-- 地理位置与备注 -->
                 <div class="card shadow-sm mb-5">
                     <div class="card-header bg-dark text-white">
                         <h5 class="mb-0">地理位置与备注</h5>
@@ -266,19 +275,52 @@
 
 {% block extra_js %}
 <script>
-// 根据建筑类型动态显示专用字段
-document.getElementById('building_type').addEventListener('change', function() {
-    const type = this.value;
-    document.querySelectorAll('.type-fields').forEach(el => el.style.display = 'none');
-    if (type === 'residential_complex') document.getElementById('residential_fields').style.display = 'block';
-    if (type === 'private_residence') document.getElementById('private_fields').style.display = 'block';
-    if (type === 'large_rental') document.getElementById('rental_fields').style.display = 'block';
-    if (type === 'commercial') document.getElementById('commercial_fields').style.display = 'block';
-});
+// 类型专用字段控制：仅在明确选定建筑类型后显示对应字段
+// 修复关键点：只清空被隐藏的区块的值，不清空即将显示的区块（保留编辑时的原值）
+document.addEventListener('DOMContentLoaded', function () {
+    const typeSelect = document.getElementById('building_type');
+    if (!typeSelect) return;
 
-// 页面加载时触发一次（编辑模式）
-document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('building_type').dispatchEvent(new Event('change'));
+    const fieldMap = {
+        'residential_complex': 'residential_fields',
+        'commercial': 'commercial_fields',
+        'large_rental': 'rental_fields',
+        'private_residence': 'private_fields'
+    };
+
+    function updateFields() {
+        const selected = typeSelect.value;
+
+        // 遍历所有类型区块
+        Object.keys(fieldMap).forEach(key => {
+            const blockId = fieldMap[key];
+            const block = document.getElementById(blockId);
+            if (!block) return;
+
+            const shouldShow = (key === selected);
+
+            if (shouldShow) {
+                // 需要显示的区块：直接显示，不清空值（保留 Jinja2 渲染的原值）
+                block.style.display = 'block';
+            } else {
+                // 需要隐藏的区块：先清空值，再隐藏
+                block.querySelectorAll('input, select').forEach(el => {
+                    if (el.type === 'checkbox' || el.type === 'radio') {
+                        el.checked = false;
+                    } else {
+                        el.value = '';
+                    }
+                });
+                block.style.display = 'none';
+            }
+        });
+    }
+
+    // 类型切换时触发
+    typeSelect.addEventListener('change', updateFields);
+
+    // 页面加载后立即执行一次（支持编辑模式初始正确显示）
+    updateFields();
 });
 </script>
 {% endblock %}

@@ -2,7 +2,7 @@
 
 **Cortana Grid** 是一个专为社区网格化治理设计的现代化 Flask Web 系统，实现对**网格、小区/建筑、人员**的全生命周期管理，支持精细化的数据权限隔离、Excel 导入导出、主题切换等功能，已达到生产级水准。
 
-重构状态：完成（三大核心模块完全独立、路由规范、权限体系完善）
+
 
 ## 主要特性
 
@@ -29,44 +29,6 @@
   - 详细操作日志
   - 缓存自动清理
 
-## 项目结构
-Cortana-grid/
-├── app.py                      # 主入口，蓝图注册
-├── run.sh                      # 智能启动脚本（支持 SQLite / MySQL 切换）
-├── clear_cache.py              # 缓存清理工具
-├── requirements.txt            # 依赖列表
-├── schema.sql                  # 数据库结构
-├── downloads/                  # 导出文件存储目录（git 忽略）
-├── static/
-│   ├── css/style.css           # 核心自定义样式
-│   ├── themes/.css            # 多主题样式
-│   ├── js/.js                 # 自定义脚本（开关、照片预览等）
-│   ├── uploads/                # 人员照片上传目录
-│   └── favicon.ico
-├── templates/
-│   ├── people.html             # 人员列表
-│   ├── buildings.html          # 小区/建筑列表
-│   ├── grids.html              # 网格列表
-│   ├── import_export.html      # 导入导出中心
-│   ├── includes/               # 组件（_navbar.html、_styles.html、_scripts.html 等）
-│   └── errors/                 # 错误页面
-├── routes/                     # 路由蓝图
-│   ├── main.py
-│   ├── grid.py
-│   ├── person.py
-│   ├── building.py
-│   ├── import_export.py
-│   └── system_settings.py
-├── repositories/               # 数据访问层（DAO）
-│   ├── base.py
-│   ├── grid_repo.py
-│   ├── person_repo.py
-│   ├── building_repo.py
-│   └── ...
-├── services/                   # 业务逻辑层
-│   └── import_export_service.py
-├── permissions.py              # 权限装饰器 + 工具函数（含 get_user_grid_ids）
-└── code2ai.py                  # 项目代码打包工具（用于 AI 分析或备份）
 
 
 ## 快速启动
