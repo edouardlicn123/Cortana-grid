@@ -35,7 +35,7 @@ def get_template_path(data_type: str) -> str:
 def export_data_to_excel(data_type, user):
     try:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        upload_dir = os.path.join(current_app.static_folder, 'exports')
+        upload_dir = os.path.join(current_app.root_path, 'downloads')
         os.makedirs(upload_dir, exist_ok=True)
 
         # 获取用户权限网格
