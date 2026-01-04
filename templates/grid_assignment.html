@@ -1,0 +1,115 @@
+{# templates/grid_assignment.html #}
+{# 网格分配页面 - 管理员为用户分配负责网格 #}
+
+{% extends "base.html" %}
+{% block title %}网格分配{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <h2 class="mb-5 text-center fw-bold text-primary">
+        <i class="bi bi-grid-3x3-gap-fill me-3 fs-1"></i>
+        用户网格分配管理
+    </h2>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-11 col-xl-10">
+            <div class="card shadow-lg border-0 rounded-4">
+                <div class="card-header bg-gradient bg-primary text-white text-center py-4 rounded-top-4">
+                    <h4 class="mb-0"><i class="bi bi-person-gear me-2"></i>为用户分配负责网格</h4>
+                </div>
+                <div class="card-body p-5">
+                    <!-- 用户选择 -->
+                    <div class="row mb-5">
+                        <div class="col-md-6 offset-md-3">
+                            <label for="userSelect" class="form-label fw-bold fs-5 mb-3">选择用户</label>
+                            <select class="form-select form-select-lg rounded-pill" id="userSelect">
+                                <option value="">-- 请选择用户 --</option>
+                                {% for user in users %}
+                                <option value="{{ user.id }}" {% if selected_user_id == user.id %}selected{% endif %}>
+                                    {{ user.username }} ({{ user.full_name or '无显示姓名' }})
+                                    {% if user.roles %}
+                                        - 角色：{{ user.roles | join(', ') | replace('community_admin', '社区管理员') | replace('grid_user', '网格员') }}
+                                    {% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <script>
+                        document.getElementById('userSelect').addEventListener('change', function() {
+                            const userId = this.value;
+                            if (userId) {
+                                window.location.href = '{{ url_for("system_settings.grid_assignment") }}?user_id=' + userId;
+                            } else {
+                                window.location.href = '{{ url_for("system_settings.grid_assignment") }}';
+                            }
+                        });
+                    </script>
+
+                    {% if selected_user_id %}
+                    <form method="POST">
+                        <input type="hidden" name="action" value="update_user_grids">
+                        <input type="hidden" name="user_id" value="{{ selected_user_id }}">
+
+                        <h4 class="text-center mb-4 text-primary fw-bold">
+                            当前编辑用户：{{ selected_user.username }} 
+                            {% if selected_user.full_name %}({{ selected_user.full_name }}){% endif %}
+                        </h4>
+
+                        <div class="row g-4 justify-content-center">
+                            {% for grid in all_grids %}
+                            <div class="col-md-6 col-lg-4 col-xl-3">
+                                <div class="card h-100 shadow-sm hover-shadow border {% if grid.id in assigned_grid_ids %}border-success{% endif %}">
+                                    <div class="card-body text-center p-4">
+                                        <div class="form-check form-switch form-switch-lg d-flex justify-content-center align-items-center">
+                                            <input class="form-check-input me-3" type="checkbox" name="grid_ids" value="{{ grid.id }}"
+                                                   id="grid_{{ grid.id }}" {% if grid.id in assigned_grid_ids %}checked{% endif %}>
+                                            <label class="form-check-label fw-bold fs-5" for="grid_{{ grid.id }}">
+                                                {{ grid.name }}
+                                            </label>
+                                        </div>
+                                        <small class="text-muted d-block mt-2">
+                                            ID: {{ grid.id }}
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="text-center mt-5">
+                            <button type="submit" class="btn btn-primary btn-lg px-5 py-3 shadow rounded-pill">
+                                <i class="bi bi-save-fill me-2"></i>保存网格分配
+                            </button>
+                        </div>
+                    </form>
+                    {% else %}
+                    <div class="text-center text-muted py-5">
+                        <i class="bi bi-info-circle-fill fs-1"></i>
+                        <p class="mt-3 fs-4">请从上方选择一个用户以分配负责网格</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .hover-shadow:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.15) !important;
+        transition: all 0.25s ease;
+    }
+    .form-switch-lg .form-check-input {
+        width: 3rem;
+        height: 1.5rem;
+    }
+    .card.border-success {
+        box-shadow: 0 0 0 3px rgba(25, 135, 84, 0.25);
+    }
+</style>
+{% endblock %}

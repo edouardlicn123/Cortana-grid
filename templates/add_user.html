@@ -1,0 +1,76 @@
+<!-- templates/add_user.html -->
+
+{% extends "base.html" %}
+{% block title %}新增用户{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <h2 class="mb-4 text-center">
+            <i class="bi bi-person-plus-fill me-2"></i>新增用户
+        </h2>
+
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <form method="post">
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label">用户名 <span class="text-danger">*</span></label>
+                            <input type="text" name="username" class="form-control" required autofocus placeholder="英文字母、数字或下划线">
+                            <div class="form-text">登录系统使用的账号，不可重复</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">初始密码 <span class="text-danger">*</span></label>
+                            <input type="password" name="password" class="form-control" required minlength="8" placeholder="至少8位">
+                            <div class="form-text">新用户首次登录将强制修改密码</div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label">真实姓名</label>
+                            <input type="text" name="full_name" class="form-control" placeholder="可选，用于显示">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">联系电话</label>
+                            <input type="text" name="phone" class="form-control" placeholder="可选">
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label">每页显示行数</label>
+                            <select name="page_size" class="form-select">
+                                <option value="10">10</option>
+                                <option value="20" selected>20</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check mt-4">
+                                <input type="checkbox" name="is_active" class="form-check-input" id="is_active" checked>
+                                <label class="form-check-label" for="is_active">账号立即激活</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        新用户创建后，下次登录时系统将<strong>强制要求修改密码</strong>。
+                    </div>
+
+                    <div class="text-center mt-5">
+                        <button type="submit" class="btn btn-success btn-lg px-5">
+                            <i class="bi bi-person-check me-2"></i>创建用户
+                        </button>
+                        <a href="{{ url_for('users.users') }}" class="btn btn-secondary btn-lg px-5 ms-3">
+                            <i class="bi bi-arrow-left me-2"></i>返回用户列表
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

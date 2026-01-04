@@ -1,0 +1,98 @@
+{# templates/person_view.html #}
+{% extends "base.html" %}
+{% block title %}查看人员信息{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white text-center">
+                    <h4 class="mb-0">
+                        <i class="bi bi-person-check me-2"></i>
+                        查看人员信息 - {{ person.name }}
+                    </h4>
+                </div>
+                <div class="card-body p-5">
+                    <!-- 基本信息 -->
+                    <h5 class="mb-4">基本信息</h5>
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">姓名</label>
+                            <p class="form-control-plaintext">{{ person.name }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">性别</label>
+                            <p class="form-control-plaintext">{{ person.gender }}</p>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">身份证号</label>
+                            <p class="form-control-plaintext">{{ person.id_card or '无' }}</p>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">其他证件</label>
+                            <p class="form-control-plaintext">{{ person.other_id_type or '无' }}: {{ person.passport or '无' }}</p>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">出生日期</label>
+                            <p class="form-control-plaintext">{{ person.birth_date or '无' }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">联系电话</label>
+                            <p class="form-control-plaintext">{{ person.phones or '无' }}</p>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label fw-bold">详细地址</label>
+                            <p class="form-control-plaintext">{{ person.address_detail }}</p>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">现住小区/建筑</label>
+                            <p class="form-control-plaintext">{{ person.building_name or '无' }}</p>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">所属网格</label>
+                            <p class="form-control-plaintext">{{ person.grid_name or '无' }}</p>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label fw-bold">照片</label>
+                            <div class="d-flex flex-wrap gap-3">
+                                {% if person.images %}
+                                    {% for img in person.images.split(',') if img.strip() %}
+                                        <img src="{{ url_for('static', filename='uploads/' + img.strip()) }}" class="rounded shadow" style="width:180px;height:180px;object-fit:cover;">
+                                    {% endfor %}
+                                {% else %}
+                                    <p class="text-muted">无照片</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 更多字段（如有） -->
+                    <h5 class="mt-5 mb-4">其他信息</h5>
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">人员类型</label>
+                            <p class="form-control-plaintext">{{ person.person_type or '常住人口' }}</p>
+                        </div>
+                        <!-- 添加其他字段如重点人员、备注等 -->
+                    </div>
+
+                    <!-- 操作按钮 -->
+                    <div class="text-center mt-5">
+                        <a href="{{ url_for('person.index') }}" class="btn btn-secondary btn-lg px-5">
+                            <i class="bi bi-arrow-left me-2"></i>返回列表
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

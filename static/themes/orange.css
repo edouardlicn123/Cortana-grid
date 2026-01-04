@@ -1,0 +1,54 @@
+:root {
+    --primary: #FF7A00;
+    --primary-dark: #E56A00;
+    --primary-light: #FFF3E0;
+    --accent: #FFA940;
+    --text: #333333;
+    --text-light: #666666;
+    --border: #E0E0E0;
+    --bg: #FFF7E6;
+    --card-bg: #FFFFFF;
+    --success: #52C41A;
+    --warning: #FAAD14;
+    --error: #F5222D;
+    --hover: #FFEFD5;
+    --shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    --shadow-hover: 0 6px 20px rgba(0, 0, 0, 0.12);
+
+    --bs-primary: var(--primary);
+    --bs-primary-dark: var(--primary-dark);
+    --bs-link-color: var(--primary);
+    --bs-link-hover-color: var(--primary-dark);
+}
+
+/* 强制覆盖导航栏 */
+.navbar.bg-primary,
+.navbar-dark {
+    background-color: var(--primary-dark) !important;
+    background-image: linear-gradient(to right, var(--primary-dark), var(--primary)) !important;
+}
+
+.navbar-dark .navbar-nav .nav-link {
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.navbar-dark .navbar-nav .nav-link:hover,
+.navbar-dark .navbar-nav .nav-link:focus,
+.navbar-dark .navbar-nav .nav-link.active {
+    color: #ffffff !important;
+    background-color: rgba(255, 255, 255, 0.15) !important;
+    border-radius: 0.375rem;
+}
+
+.navbar-dark .navbar-brand {
+    color: #ffffff !important;
+}
+
+#copyTemplateBtn {
+    background: #FF7A00;
+}
+
+#copyTemplateBtn:hover {
+    background: #E56A00;
+    box-shadow: 0 6px 16px rgba(229, 106, 0, 0.4);
+}

@@ -1,0 +1,190 @@
+<!-- templates/building_view.html -->
+<!-- 小区/建筑查看页面（显示全部有值的字段，隐藏空字段） -->
+
+{% extends "base.html" %}
+{% block title %}查看小区/建筑 - {{ building.name }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10 col-xl-8">
+        <h2 class="mb-4 text-center">
+            <i class="bi bi-building me-2"></i>小区/建筑详细信息
+        </h2>
+
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">{{ building.name }}</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row">
+                    <!-- 类型（始终显示） -->
+                    <dt class="col-sm-3 text-muted">类型</dt>
+                    <dd class="col-sm-9">
+                        {% if building.type == 'residential_complex' %}小区
+                        {% elif building.type == 'commercial' %}商业建筑
+                        {% elif building.type == 'large_rental' %}大型出租房
+                        {% elif building.type == 'private_residence' %}私人住宅
+                        {% else %}未知
+                        {% endif %}
+                    </dd>
+
+                    <!-- 所属网格 -->
+                    {% if grid_name %}
+                    <dt class="col-sm-3 text-muted">所属网格</dt>
+                    <dd class="col-sm-9">{{ grid_name }}</dd>
+                    {% endif %}
+
+                    <!-- 地址 -->
+                    {% if building.address %}
+                    <dt class="col-sm-3 text-muted">地址</dt>
+                    <dd class="col-sm-9">{{ building.address }}</dd>
+                    {% endif %}
+
+                    <!-- 建成年份 -->
+                    {% if building.build_year %}
+                    <dt class="col-sm-3 text-muted">建成年份</dt>
+                    <dd class="col-sm-9">{{ building.build_year }}</dd>
+                    {% endif %}
+
+                    <!-- 户数 -->
+                    {% if building.households is not none and building.households > 0 %}
+                    <dt class="col-sm-3 text-muted">户数</dt>
+                    <dd class="col-sm-9">{{ building.households }}</dd>
+                    {% endif %}
+
+                    <!-- 楼栋数 -->
+                    {% if building.buildings_count is not none and building.buildings_count > 0 %}
+                    <dt class="col-sm-3 text-muted">楼栋数</dt>
+                    <dd class="col-sm-9">{{ building.buildings_count }}</dd>
+                    {% endif %}
+
+                    <!-- 约居住人数 -->
+                    {% if building.approx_residents is not none and building.approx_residents > 0 %}
+                    <dt class="col-sm-3 text-muted">约居住人数</dt>
+                    <dd class="col-sm-9">{{ building.approx_residents }}</dd>
+                    {% endif %}
+
+                    <!-- 企业数 -->
+                    {% if building.businesses_count is not none and building.businesses_count > 0 %}
+                    <dt class="col-sm-3 text-muted">企业数</dt>
+                    <dd class="col-sm-9">{{ building.businesses_count }}</dd>
+                    {% endif %}
+
+                    <!-- 底商数 -->
+                    {% if building.ground_floor_shops is not none and building.ground_floor_shops > 0 %}
+                    <dt class="col-sm-3 text-muted">底商数</dt>
+                    <dd class="col-sm-9">{{ building.ground_floor_shops }}</dd>
+                    {% endif %}
+
+                    <!-- 通天燃气 -->
+                    {% if building.has_gas_pipeline is not none %}
+                    <dt class="col-sm-3 text-muted">通天燃气</dt>
+                    <dd class="col-sm-9">{% if building.has_gas_pipeline %}是{% else %}否{% endif %}</dd>
+                    {% endif %}
+
+                    <!-- 物业费 -->
+                    {% if building.property_fee %}
+                    <dt class="col-sm-3 text-muted">物业费</dt>
+                    <dd class="col-sm-9">{{ building.property_fee }}</dd>
+                    {% endif %}
+
+                    <!-- 电梯数 -->
+                    {% if building.elevators is not none and building.elevators > 0 %}
+                    <dt class="col-sm-3 text-muted">电梯数</dt>
+                    <dd class="col-sm-9">{{ building.elevators }}</dd>
+                    {% endif %}
+
+                    <!-- 室内车位 -->
+                    {% if building.indoor_parking is not none and building.indoor_parking > 0 %}
+                    <dt class="col-sm-3 text-muted">室内车位</dt>
+                    <dd class="col-sm-9">{{ building.indoor_parking }}</dd>
+                    {% endif %}
+
+                    <!-- 室外车位 -->
+                    {% if building.outdoor_parking is not none and building.outdoor_parking > 0 %}
+                    <dt class="col-sm-3 text-muted">室外车位</dt>
+                    <dd class="col-sm-9">{{ building.outdoor_parking }}</dd>
+                    {% endif %}
+
+                    <!-- 安全负责人 -->
+                    {% if building.security_manager %}
+                    <dt class="col-sm-3 text-muted">安全负责人</dt>
+                    <dd class="col-sm-9">{{ building.security_manager }}</dd>
+                    {% endif %}
+
+                    <!-- 安全负责人电话 -->
+                    {% if building.security_manager_phone %}
+                    <dt class="col-sm-3 text-muted">安全负责人电话</dt>
+                    <dd class="col-sm-9">{{ building.security_manager_phone }}</dd>
+                    {% endif %}
+
+                    <!-- 开发商 -->
+                    {% if building.developer %}
+                    <dt class="col-sm-3 text-muted">开发商</dt>
+                    <dd class="col-sm-9">{{ building.developer }}</dd>
+                    {% endif %}
+
+                    <!-- 施工单位 -->
+                    {% if building.constructor %}
+                    <dt class="col-sm-3 text-muted">施工单位</dt>
+                    <dd class="col-sm-9">{{ building.constructor }}</dd>
+                    {% endif %}
+
+                    <!-- 物业公司 -->
+                    {% if building.property_management_company %}
+                    <dt class="col-sm-3 text-muted">物业公司</dt>
+                    <dd class="col-sm-9">{{ building.property_management_company }}</dd>
+                    {% endif %}
+
+                    <!-- 物业联系电话 -->
+                    {% if building.property_contact_phone %}
+                    <dt class="col-sm-3 text-muted">物业联系电话</dt>
+                    <dd class="col-sm-9">{{ building.property_contact_phone }}</dd>
+                    {% endif %}
+
+                    <!-- 业主姓名（私人住宅专用，但如果有值也显示） -->
+                    {% if building.owner_name %}
+                    <dt class="col-sm-3 text-muted">业主姓名</dt>
+                    <dd class="col-sm-9">{{ building.owner_name }}</dd>
+                    {% endif %}
+
+                    <!-- 业主电话 -->
+                    {% if building.owner_phone %}
+                    <dt class="col-sm-3 text-muted">业主电话</dt>
+                    <dd class="col-sm-9">{{ building.owner_phone }}</dd>
+                    {% endif %}
+
+                    <!-- 纬度 -->
+                    {% if building.latitude %}
+                    <dt class="col-sm-3 text-muted">纬度</dt>
+                    <dd class="col-sm-9">{{ building.latitude }}</dd>
+                    {% endif %}
+
+                    <!-- 经度 -->
+                    {% if building.longitude %}
+                    <dt class="col-sm-3 text-muted">经度</dt>
+                    <dd class="col-sm-9">{{ building.longitude }}</dd>
+                    {% endif %}
+
+                    <!-- 备注 -->
+                    {% if building.notes %}
+                    <dt class="col-sm-3 text-muted">备注</dt>
+                    <dd class="col-sm-9">{{ building.notes | nl2br }}</dd>
+                    {% endif %}
+                </dl>
+
+                <div class="text-center mt-5">
+                    <a href="{{ url_for('management.buildings') }}" class="btn btn-secondary btn-lg px-5">
+                        <i class="bi bi-arrow-left me-2"></i>返回列表
+                    </a>
+                    {% if 'super_admin' in current_user.roles or 'community_admin' in current_user.roles %}
+                    <a href="{{ url_for('management.edit_building', bid=building.id) }}" class="btn btn-primary btn-lg px-5 ms-3">
+                        <i class="bi bi-pencil me-2"></i>编辑信息
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

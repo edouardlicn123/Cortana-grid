@@ -1,0 +1,32 @@
+{# templates/includes/_scripts.html - 完全本地版 #}
+
+<!-- Bootstrap Bundle JS（本地，必须包含 Popper） -->
+<script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+
+<!-- 初始化所有 Dropdown（保证点击、键盘、移动端正常工作） -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const dropdownElementList = document.querySelectorAll('.dropdown-toggle');
+    dropdownElementList.forEach(function (el) {
+        new bootstrap.Dropdown(el);
+    });
+});
+</script>
+
+<style>
+    .card:hover {
+        transform: translateY(-5px);
+        transition: transform 0.3s ease;
+    }
+    .form-switch .form-check-input:checked {
+        background-color: var(--bs-primary);
+        border-color: var(--bs-primary);
+    }
+</style>
+
+
+<!-- 您的其他自定义脚本 -->
+<script src="{{ url_for('static', filename='js/common.js') }}"></script>
+<script src="{{ url_for('static', filename='js/person_edit.js') }}"></script>
+<script src="{{ url_for('static', filename='js/buildings.js') }}"></script>
+{# 如有其他 js，继续添加 #}

@@ -1,0 +1,42 @@
+{# templates/import_export.html #}
+{% extends "base.html" %}
+{% block title %}导入导出{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <h3 class="mb-3">数据导入导出</h3>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">导入人员数据</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('import_export.import_file') }}" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label class="form-label">选择 Excel 文件 (.xlsx)</label>
+                            <input type="file" name="file" class="form-control" accept=".xlsx" required>
+                            <small class="text-muted">必须包含列：姓名、性别、详细地址（可选：身份证号）</small>
+                        </div>
+                        <button type="submit" class="btn btn-success">开始导入</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">导出人员数据</h5>
+                </div>
+                <div class="card-body text-center pt-5">
+                    <a href="{{ url_for('import_export.export_file') }}" class="btn btn-info btn-lg">
+                        <i class="bi bi-download me-2"></i>导出当前人员为 Excel
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

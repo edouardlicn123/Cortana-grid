@@ -1,0 +1,53 @@
+<!-- templates/base.html（最新完整版：标题 + CSS + JS 全部模块化移出） -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- 动态标题部分 -->
+    {% include 'includes/_title.html' %}
+
+    <!-- Bootstrap 5 + Icons（CDN 保留，体积小且稳定） -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
+    <!-- 动态样式部分（基础样式 + 主题 + 防缓存） -->
+    {% include 'includes/_styles.html' %}
+    {% block page_styles %}{% endblock %} 
+    {% include 'includes/_scripts.html' %}
+</head>
+
+<body>
+    <!-- 导航栏 -->
+    {% include 'includes/_navbar.html' %}
+
+    <!-- 主内容区域 -->
+    <main class="container-fluid py-4">
+        <!-- Flash 消息 -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="row justify-content-center mb-4">
+                    <div class="col-lg-10">
+                        {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="关闭"></button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <!-- 子模板内容 -->
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- 页脚 -->
+    {% include 'includes/_footer.html' %}
+
+    <!-- 动态脚本部分（Bootstrap JS 已改为本地 + 公共 JS） -->
+    {% include 'includes/_scripts.html' %}
+</body>
+</html>

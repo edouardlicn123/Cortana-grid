@@ -1,0 +1,83 @@
+{# templates/people.html #}
+{% extends "base.html" %}
+{% block title %}人员管理{% endblock %}{% block content %}<div class="container my-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="mb-0">人员管理</h3>
+        <a href="{{ url_for('person.add_person') }}" class="btn btn-success btn-lg">
+            <i class="bi bi-person-add me-2"></i>新增人员
+        </a>
+    </div>
+
+<!-- 搜索框 -->
+<form method="GET" class="mb-4">
+    <div class="input-group">
+        <input type="text" name="search" class="form-control form-control-lg" value="{{ search }}" placeholder="搜索姓名或身份证号">
+        <button type="submit" class="btn btn-primary btn-lg">搜索</button>
+    </div>
+</form>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>姓名</th>
+                        <th>身份证号</th>
+                        <th>现住地址</th>
+                        <th>所属网格</th>
+                        <th>更新时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in persons %}
+                    <tr>
+                        <td>{{ p.name }}</td>
+                        <td>{{ p.id_card or '无' }}</td>
+                        <td>{{ p.building_name or '无' }} - {{ p.address_detail }}</td>
+                        <td>{{ p.grid_name or '无' }}</td>
+                        <td>{{ p.updated_at }}</td>
+                        <td>
+                            <!-- 查看按钮 -->
+                            <a href="{{ url_for('person.view_person', pid=p.id) }}" class="btn btn-info btn-sm me-2">
+                                <i class="bi bi-eye"></i> 查看
+                            </a>
+                            <a href="{{ url_for('person.edit_person', pid=p.id) }}" class="btn btn-warning btn-sm me-2">
+                                <i class="bi bi-pencil"></i> 编辑
+                            </a>
+                            <form method="POST" style="display:inline;" onsubmit="return confirm('确定删除「{{ p.name }}」吗？');">
+                                <input type="hidden" name="action" value="delete">
+                                <input type="hidden" name="pid" value="{{ p.id }}">
+                                <button type="submit" class="btn btn-danger btn-sm">
+                                    <i class="bi bi-trash"></i> 删除
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center py-5 text-muted">暂无人员数据</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- 分页 -->
+{% if total_pages > 1 %}
+<nav class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% for i in range(1, total_pages + 1) %}
+        <li class="page-item {% if i == page %}active{% endif %}">
+            <a class="page-link" href="{{ url_for('management.people', page=i, search=search) }}">{{ i }}</a>
+        </li>
+        {% endfor %}
+    </ul>
+</nav>
+{% endif %}</div>
+{% endblock %}
+
+

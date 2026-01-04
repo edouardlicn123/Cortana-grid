@@ -1,0 +1,96 @@
+{# templates/settings.html #}
+{# 个人设置页面 - 最终版：移除“默认主题”选项，并默认选中 default.css #}
+
+{% extends "base.html" %}
+
+{% block title %}个人设置{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-xl-7">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white py-3">
+                    <h4 class="mb-0">
+                        <i class="bi bi-gear-wide-connected me-2"></i>个人设置
+                    </h4>
+                </div>
+                <div class="card-body p-5">
+                    <form method="POST">
+                        <div class="mb-4">
+                            <label for="full_name" class="form-label fw-bold">显示姓名</label>
+                            <input type="text" name="full_name" id="full_name" class="form-control form-control-lg"
+                                   value="{{ current_user.full_name or '' }}" placeholder="留空则显示用户名">
+                            <div class="form-text">用于页面顶部用户菜单显示，留空则显示用户名</div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="page_size" class="form-label fw-bold">每页显示条数</label>
+                            <input type="number" name="page_size" id="page_size" class="form-control form-control-lg"
+                                   min="10" max="100" value="{{ current_user.page_size }}" required>
+                            <div class="form-text">范围 10-100，影响所有列表页面分页</div>
+                        </div>
+
+                        <div class="mb-5">
+                            <label for="preferred_css" class="form-label fw-bold">界面主题</label>
+                            <select name="preferred_css" id="preferred_css" class="form-select form-select-lg">
+                                {% for theme_path in available_themes %}
+                                    {% if theme_path != '' %}
+                                        {% set filename = theme_path.split('/')[-1] %}
+                                        <option value="{{ filename }}"
+                                                {% if filename == 'default.css' or current_user.preferred_css.endswith(filename) %}selected{% endif %}>
+                                            {{ filename }}
+                                        </option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                            <div class="form-text mt-2">
+                                <i class="bi bi-info-circle me-1"></i>
+                                选择后保存即可实时切换界面主题（叠加在基础样式之上）
+                            </div>
+                        </div>
+
+                        <div class="text-end">
+                            <button type="submit" class="btn btn-success btn-lg px-5 shadow">
+                                <i class="bi bi-check-circle-fill me-2"></i>保存设置
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 当前用户信息展示 -->
+            <div class="card shadow-sm mt-4">
+                <div class="card-header bg-secondary text-white py-3">
+                    <h5 class="mb-0"><i class="bi bi-person-badge me-2"></i>当前用户信息</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">用户名</dt>
+                        <dd class="col-sm-8">{{ current_user.username }}</dd>
+
+                        <dt class="col-sm-4">角色</dt>
+                        <dd class="col-sm-8">
+                            {% for role in current_user.roles %}
+                                <span class="badge bg-info me-1">{{ role }}</span>
+                            {% endfor %}
+                        </dd>
+
+                        <dt class="col-sm-4">当前主题</dt>
+                        <dd class="col-sm-8">
+                            {% if current_user.preferred_css %}
+                                {{ current_user.preferred_css.split('/')[-1] }}
+                            {% else %}
+                                <em class="text-muted">default.css（系统默认）</em>
+                            {% endif %}
+                        </dd>
+
+                        <dt class="col-sm-4">每页条数</dt>
+                        <dd class="col-sm-8">{{ current_user.page_size }}</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

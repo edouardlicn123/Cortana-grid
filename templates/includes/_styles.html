@@ -1,0 +1,90 @@
+{# templates/includes/_styles.html #}
+{# 样式加载 - 完全本地版 + 默认必须加载 default.css #}
+
+<!-- Bootstrap Icons（本地） -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap-icons.css') }}">
+
+<!-- 项目基础样式（必须最先加载，定义变量） -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+<!-- Bootstrap 主样式（本地） -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+
+<!-- 默认主题（必须加载，作为基础） -->
+<link rel="stylesheet" href="{{ url_for('static', filename='themes/default.css') }}">
+
+<!-- 用户选择的额外主题（可选叠加覆盖） -->
+{% if current_user.preferred_css and current_user.preferred_css != '' %}
+<link rel="stylesheet" href="{{ url_for('static', filename='themes/' + current_user.preferred_css) }}">
+{% endif %}
+
+<!-- 页面额外 CSS（子模板可覆盖） -->
+{% block extra_css %}{% endblock %}
+
+<!-- 鼠标悬停下拉菜单样式（桌面端） -->
+<style>
+/* 桌面端鼠标悬停显示子菜单 */
+@media (min-width: 992px) {
+    .dropdown-hover:hover > .dropdown-menu {
+        display: block;
+        margin-top: 0;
+    }
+    
+    /* 可选：悬停时高亮父菜单 */
+    .dropdown-hover:hover > .dropdown-toggle {
+        background: rgba(255, 255, 255, 0.2) !important;
+    }
+}
+</style>
+
+<style>
+    /* 导航栏背景强制跟随主题 primary，兜底默认蓝色 */
+    .navbar {
+        background-color: var(--bs-primary, #0d6efd) !important;
+    }
+    
+    /* 确保文字始终白色 */
+    .navbar-dark .navbar-nav .nav-link {
+        color: rgba(255, 255, 255, 0.95) !important;
+    }
+    .navbar-dark .navbar-nav .nav-link:hover {
+        color: #ffffff !important;
+    }
+    
+    /* 下拉菜单背景同步 */
+    .navbar .dropdown-menu {
+        background-color: var(--bs-body-bg, #ffffff);
+    }
+</style>
+
+
+<style>
+    /* 全局修复：深色背景下卡片标题文字高可读性 */
+    .card-header h4,
+    .card-header h5 {
+        color: #ffffff !important;
+        text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.7);
+        font-weight: 700;
+    }
+
+    /* 标题内的图标也强制纯白 + 阴影 */
+    .card-header i {
+        color: #ffffff !important;
+        text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.6);
+    }
+
+    /* 可选：确保卡片 header 背景不被意外覆盖 */
+    .card-header.bg-primary {
+        background-color: var(--bs-primary, #0d6efd) !important;
+    }
+    .card-header.bg-secondary {
+        background-color: var(--bs-secondary, #6c757d) !important;
+    }
+
+    /* 可选：所有卡片 header 轻微内阴影，增强层次感 */
+    .card-header {
+        box-shadow: inset 0 -1px 0 rgba(0,0,0,0.15);
+    }
+</style>
+
+

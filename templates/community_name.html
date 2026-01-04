@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+    <h2>社区名称设置</h2>
+    <form method="post">
+        <label>当前社区名称</label>
+        <input type="text" name="community_name" value="{{ community_name }}" required style="width: 400px;">
+        <button type="submit">保存修改</button>
+    </form>
+    <p style="margin-top: 20px; color: #666;">
+        社区名称将显示在系统标题和所有页面头部。
+    </p>
+</div>
+{% endblock %}

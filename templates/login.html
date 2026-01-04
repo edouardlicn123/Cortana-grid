@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}登录{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center align-items-center min-vh-100">
+    <div class="col-lg-4 col-md-6 col-sm-8">
+        <div class="card shadow-lg border-0">
+            <div class="card-header text-center py-4">
+                <h3 class="mb-0 text-white">
+                    <i class="bi bi-shield-lock-fill me-2"></i>
+                    {{ community_name or '社区网格化人口管理系统' }}
+                </h3>
+                <p class="mb-0 mt-2 opacity-90">请登录系统</p>
+            </div>
+
+            <div class="card-body p-5">
+                <form method="post">
+                    <div class="mb-4">
+                        <label for="username" class="form-label">
+                            <i class="bi bi-person me-2"></i>用户名
+                        </label>
+                        <input type="text" name="username" id="username" class="form-control form-control-lg" 
+                               placeholder="请输入用户名" required autofocus>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="password" class="form-label">
+                            <i class="bi bi-lock me-2"></i>密码
+                        </label>
+                        <input type="password" name="password" id="password" class="form-control form-control-lg" 
+                               placeholder="请输入密码" required>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg w-100">
+                        <i class="bi bi-box-arrow-in-right me-2"></i>立即登录
+                    </button>
+                </form>
+
+                <!-- Flash 消息 -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <div class="mt-4">
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show mt-3" role="alert">
+                                    <i class="bi bi-exclamation-triangle me-2"></i>{{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
+
+                <!-- 条件显示默认账号提示 -->
+                {% if show_default_credentials %}
+                <div class="mt-4 p-4 bg-light rounded text-center small">
+                    <p class="mb-1 text-muted"><strong>默认账号：</strong>admin</p>
+                    <p class="mb-1 text-muted"><strong>默认密码：</strong>a12345678</p>
+                    <p class="mt-2 mb-0 text-danger"><strong>首次登录后请立即修改密码！</strong></p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

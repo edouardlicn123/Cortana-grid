@@ -1,0 +1,284 @@
+{# templates/edit_building.html #}
+{# 完整建筑新增/编辑页面 - 参考旧版布局，覆盖所有数据库字段，支持类型动态字段 #}
+
+{% extends "base.html" %}
+{% block title %}{{ '新增小区/建筑' if not building else '编辑小区/建筑：' + building.name }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-11 col-xl-10">
+            <h2 class="mb-5 text-center fw-bold text-primary">
+                <i class="bi bi-building-gear me-3"></i>
+                {{ '新增小区/建筑' if not building else '编辑小区/建筑信息' }}
+            </h2>
+
+            <form method="POST">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">基本信息（必填）</h5>
+                    </div>
+                    <div class="card-body p-5">
+                        <div class="row g-4">
+                            <div class="col-md-7">
+                                <label class="form-label fw-bold">小区/建筑名称 <span class="text-danger">*</span></label>
+                                <input type="text" name="name" class="form-control form-control-lg"
+                                       value="{{ building.name if building else '' }}" required autofocus>
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label fw-bold">建筑类型 <span class="text-danger">*</span></label>
+                                <select name="type" id="building_type" class="form-select form-select-lg" required>
+                                    <option value="">-- 请选择类型 --</option>
+                                    <option value="residential_complex" {% if building and building.type == 'residential_complex' %}selected{% endif %}>
+                                        住宅小区
+                                    </option>
+                                    <option value="private_residence" {% if building and building.type == 'private_residence' %}selected{% endif %}>
+                                        私人住宅
+                                    </option>
+                                    <option value="large_rental" {% if building and building.type == 'large_rental' %}selected{% endif %}>
+                                        大型出租房
+                                    </option>
+                                    <option value="commercial" {% if building and building.type == 'commercial' %}selected{% endif %}>
+                                        商业建筑
+                                    </option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-bold">所属网格 <span class="text-danger">*</span></label>
+                                <select name="grid_id" class="form-select form-select-lg" required>
+                                    <option value="">-- 请选择网格 --</option>
+                                    {% for grid in grids %}
+                                    <option value="{{ grid.id }}" {% if building and building.grid_id == grid.id %}selected{% endif %}>
+                                        {{ grid.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 通用信息 -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">位置与基础信息</h5>
+                    </div>
+                    <div class="card-body p-5">
+                        <div class="row g-4">
+                            <div class="col-12">
+                                <label class="form-label">详细地址</label>
+                                <input type="text" name="address" class="form-control" value="{{ building.address if building else '' }}">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">建成年份</label>
+                                <input type="number" name="build_year" class="form-control" value="{{ building.build_year if building else '' }}" min="1900" max="2100">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">户数</label>
+                                <input type="number" name="households" class="form-control" value="{{ building.households if building else '' }}" min="0">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">楼栋数</label>
+                                <input type="number" name="buildings_count" class="form-control" value="{{ building.buildings_count if building else '' }}" min="0">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">约居住人数</label>
+                                <input type="number" name="approx_residents" class="form-control" value="{{ building.approx_residents if building else '' }}" min="0">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">企业数（含居家办公）</label>
+                                <input type="number" name="businesses_count" class="form-control" value="{{ building.businesses_count if building else '' }}" min="0">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">底商数量</label>
+                                <input type="number" name="ground_floor_shops" class="form-control" value="{{ building.ground_floor_shops if building else '' }}" min="0">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">是否通燃气管道</label>
+                                <select name="has_gas_pipeline" class="form-select">
+                                    <option value="0" {% if not building or building.has_gas_pipeline == 0 %}selected{% endif %}>否</option>
+                                    <option value="1" {% if building and building.has_gas_pipeline == 1 %}selected{% endif %}>是</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 设施与物业 -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0">设施与物业信息</h5>
+                    </div>
+                    <div class="card-body p-5">
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <label class="form-label">物业费标准</label>
+                                <input type="text" name="property_fee" class="form-control" value="{{ building.property_fee if building else '' }}" placeholder="如 2.5元/㎡/月">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">电梯数量</label>
+                                <input type="number" name="elevators" class="form-control" value="{{ building.elevators if building else '' }}" min="0">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">室内车位数</label>
+                                <input type="number" name="indoor_parking" class="form-control" value="{{ building.indoor_parking if building else '' }}" min="0">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">室外车位数</label>
+                                <input type="number" name="outdoor_parking" class="form-control" value="{{ building.outdoor_parking if building else '' }}" min="0">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">安全管理负责人</label>
+                                <input type="text" name="security_manager" class="form-control" value="{{ building.security_manager if building else '' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">安全负责人电话</label>
+                                <input type="text" name="security_manager_phone" class="form-control" value="{{ building.security_manager_phone if building else '' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">开发商</label>
+                                <input type="text" name="developer" class="form-control" value="{{ building.developer if building else '' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">施工单位</label>
+                                <input type="text" name="constructor" class="form-control" value="{{ building.constructor if building else '' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">物业管理公司</label>
+                                <input type="text" name="property_management_company" class="form-control" value="{{ building.property_management_company if building else '' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">物业联系电话</label>
+                                <input type="text" name="property_contact_phone" class="form-control" value="{{ building.property_contact_phone if building else '' }}">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 类型专用字段（动态显示） -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">类型专用信息</h5>
+                    </div>
+                    <div class="card-body p-5">
+
+                        <!-- 住宅小区专用 -->
+                        <div id="residential_fields" class="type-fields" style="display: {% if building and building.type == 'residential_complex' %}block{% else %}none{% endif %};">
+                            <div class="row g-4">
+                                <div class="col-md-6">
+                                    <label class="form-label text-info">业委会联系人（小区专用）</label>
+                                    <input type="text" name="owners_committee_contact" class="form-control" value="{{ building.owners_committee_contact if building else '' }}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-info">业委会联系电话（小区专用）</label>
+                                    <input type="text" name="owners_committee_phone" class="form-control" value="{{ building.owners_committee_phone if building else '' }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 私人住宅专用 -->
+                        <div id="private_fields" class="type-fields" style="display: {% if building and building.type == 'private_residence' %}block{% else %}none{% endif %};">
+                            <div class="row g-4">
+                                <div class="col-md-6">
+                                    <label class="form-label text-warning">业主姓名（私人住宅专用）</label>
+                                    <input type="text" name="owner_name" class="form-control" value="{{ building.owner_name if building else '' }}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-warning">业主电话（私人住宅专用）</label>
+                                    <input type="text" name="owner_phone" class="form-control" value="{{ building.owner_phone if building else '' }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 大型出租房专用 -->
+                        <div id="rental_fields" class="type-fields" style="display: {% if building and building.type == 'large_rental' %}block{% else %}none{% endif %};">
+                            <div class="row g-4">
+                                <div class="col-md-6">
+                                    <label class="form-label text-purple">房东姓名（大型出租房专用）</label>
+                                    <input type="text" name="landlord_name" class="form-control" value="{{ building.landlord_name if building else '' }}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-purple">房东电话（大型出租房专用）</label>
+                                    <input type="text" name="landlord_phone" class="form-control" value="{{ building.landlord_phone if building else '' }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 商业建筑专用 -->
+                        <div id="commercial_fields" class="type-fields" style="display: {% if building and building.type == 'commercial' %}block{% else %}none{% endif %};">
+                            <div class="row g-4">
+                                <div class="col-12">
+                                    <label class="form-label text-danger">商业类型（商业建筑专用）</label>
+                                    <select name="commercial_type" class="form-select">
+                                        <option value="">-- 请选择 --</option>
+                                        <option value="商场" {% if building and building.commercial_type == '商场' %}selected{% endif %}>商场</option>
+                                        <option value="办公楼" {% if building and building.commercial_type == '办公楼' %}selected{% endif %}>办公楼</option>
+                                        <option value="写字楼" {% if building and building.commercial_type == '写字楼' %}selected{% endif %}>写字楼</option>
+                                        <option value="酒店" {% if building and building.commercial_type == '酒店' %}selected{% endif %}>酒店</option>
+                                        <option value="餐饮街" {% if building and building.commercial_type == '餐饮街' %}selected{% endif %}>餐饮街</option>
+                                        <option value="市场" {% if building and building.commercial_type == '市场' %}selected{% endif %}>市场</option>
+                                        <option value="混合" {% if building and building.commercial_type == '混合' %}selected{% endif %}>混合</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 地图坐标与备注 -->
+                <div class="card shadow-sm mb-5">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="mb-0">地理位置与备注</h5>
+                    </div>
+                    <div class="card-body p-5">
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <label class="form-label">纬度（Latitude）</label>
+                                <input type="text" name="latitude" class="form-control" value="{{ building.latitude if building else '' }}" placeholder="如 39.9042">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">经度（Longitude）</label>
+                                <input type="text" name="longitude" class="form-control" value="{{ building.longitude if building else '' }}" placeholder="如 116.4074">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">备注信息</label>
+                                <textarea name="notes" class="form-control" rows="5">{{ building.notes if building else '' }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 提交按钮 -->
+                <div class="text-center mt-5">
+                    <button type="submit" class="btn btn-primary btn-lg px-5 shadow">
+                        <i class="bi bi-check-circle-fill me-2"></i>
+                        {{ '确认添加' if not building else '保存修改' }}
+                    </button>
+                    <a href="{{ url_for('building.index') }}" class="btn btn-secondary btn-lg px-5 ms-4">
+                        <i class="bi bi-arrow-left me-2"></i>返回列表
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 根据建筑类型动态显示专用字段
+document.getElementById('building_type').addEventListener('change', function() {
+    const type = this.value;
+    document.querySelectorAll('.type-fields').forEach(el => el.style.display = 'none');
+    if (type === 'residential_complex') document.getElementById('residential_fields').style.display = 'block';
+    if (type === 'private_residence') document.getElementById('private_fields').style.display = 'block';
+    if (type === 'large_rental') document.getElementById('rental_fields').style.display = 'block';
+    if (type === 'commercial') document.getElementById('commercial_fields').style.display = 'block';
+});
+
+// 页面加载时触发一次（编辑模式）
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('building_type').dispatchEvent(new Event('change'));
+});
+</script>
+{% endblock %}

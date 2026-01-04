@@ -1,0 +1,21 @@
+<!-- templates/includes/_footer.html -->
+<!-- 统一页脚（含动态版权年份、社区名称、当前用户信息） -->
+
+<footer class="mt-5 py-4 text-center text-muted small border-top" style="background: var(--card-bg);">
+    <div class="container">
+        <p class="mb-2">
+            © © 2025-{{ current_year }}  <strong>{{ community_name }} </strong> 
+            <span class="mx-3">|   小科网格 Cortana Grid 请注意运行环境安全，如泄密后果自负。</span>
+        </p>
+        <p class="mb-0">
+            {% if current_user.is_authenticated %}
+            当前用户：{{ current_user.display_name }}
+            {% if current_user.roles %}
+            <span class="mx-2">|</span> 角色：{{ current_user.roles | join('、') }}
+            {% endif %}
+            {% else %}
+            未登录
+            {% endif %}
+        </p>
+    </div>
+</footer>
