@@ -1,42 +1,152 @@
 {# templates/import_export.html #}
 {% extends "base.html" %}
-{% block title %}导入导出{% endblock %}
+{% block title %}数据导入导出{% endblock %}
 
 {% block content %}
-<div class="container my-5">
-    <h3 class="mb-3">数据导入导出</h3>
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10 col-xl-9">
+            <h2 class="mb-5 text-center fw-bold text-primary">
+                <i class="bi bi-arrow-down-up me-3"></i>数据导入导出中心
+            </h2>
 
-    <div class="row">
-        <div class="col-md-6">
-            <div class="card shadow-sm">
+            <!-- 数据导入卡片 -->
+            <div class="card shadow-sm mb-5">
                 <div class="card-header bg-success text-white">
-                    <h5 class="mb-0">导入人员数据</h5>
+                    <h4 class="mb-0"><i class="bi bi-cloud-upload-fill me-2"></i>数据导入</h4>
                 </div>
-                <div class="card-body">
-                    <form method="POST" action="{{ url_for('import_export.import_file') }}" enctype="multipart/form-data">
-                        <div class="mb-3">
-                            <label class="form-label">选择 Excel 文件 (.xlsx)</label>
-                            <input type="file" name="file" class="form-control" accept=".xlsx" required>
-                            <small class="text-muted">必须包含列：姓名、性别、详细地址（可选：身份证号）</small>
+                <div class="card-body p-5">
+                    <div class="alert alert-warning small">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        <strong>重要提醒：</strong>导入操作会直接修改数据库，请先备份数据！导入后请仔细核对。
+                    </div>
+
+                    <form method="POST" 
+                          action="{{ url_for('import_export.import_data') }}" 
+                          enctype="multipart/form-data">
+                        <div class="row g-4 align-items-end">
+                            <div class="col-md-5">
+                                <label class="form-label fw-bold">导入类型 <span class="text-danger">*</span></label>
+                                <select name="import_type" class="form-select form-select-lg" required>
+                                    <option value="">-- 请选择导入数据类型 --</option>
+                                    <option value="person">人员信息</option>
+                                    <option value="building">小区/建筑信息</option>
+                                    <!-- 未来扩展：添加更多类型 -->
+                                    <!-- <option value="grid">网格信息</option> -->
+                                    <!-- <option value="vehicle">车辆信息</option> -->
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Excel 文件 <span class="text-danger">*</span></label>
+                                <input type="file" name="file" class="form-control form-control-lg" 
+                                       accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required>
+                            </div>
+                            <div class="col-md-3">
+                                <button type="submit" class="btn btn-success btn-lg w-100 shadow">
+                                    <i class="bi bi-upload me-2"></i>开始导入
+                                </button>
+                            </div>
                         </div>
-                        <button type="submit" class="btn btn-success">开始导入</button>
+                        <div class="mt-3">
+                            <small class="text-muted">
+                                <i class="bi bi-info-circle me-1"></i>
+                                请严格按照模板格式填写，仅支持 .xlsx 格式（Excel 2007+）
+                            </small>
+                        </div>
                     </form>
                 </div>
             </div>
-        </div>
 
-        <div class="col-md-6">
-            <div class="card shadow-sm">
+            <!-- 模板下载卡片 -->
+            <div class="card shadow-sm mb-5">
                 <div class="card-header bg-info text-white">
-                    <h5 class="mb-0">导出人员数据</h5>
+                    <h4 class="mb-0"><i class="bi bi-file-earmark-spreadsheet me-2"></i>下载导入模板</h4>
                 </div>
-                <div class="card-body text-center pt-5">
-                    <a href="{{ url_for('import_export.export_file') }}" class="btn btn-info btn-lg">
-                        <i class="bi bi-download me-2"></i>导出当前人员为 Excel
-                    </a>
+                <div class="card-body p-5">
+                    <p class="text-muted mb-4">请选择需要的数据模板，下载后按说明填写再导入。</p>
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <div class="border rounded p-4 text-center hover-shadow transition">
+                                <i class="bi bi-people-fill text-primary" style="font-size: 3rem;"></i>
+                                <h5 class="mt-3">人员信息模板</h5>
+                                <p class="text-muted small">包含姓名、身份证、地址、类型等字段</p>
+                                <a href="{{ url_for('import_export.download_template', data_type='person') }}" 
+                                   class="btn btn-outline-primary">
+                                    <i class="bi bi-download me-2"></i>下载模板
+                                </a>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="border rounded p-4 text-center hover-shadow transition">
+                                <i class="bi bi-building-fill text-info" style="font-size: 3rem;"></i>
+                                <h5 class="mt-3">小区/建筑模板</h5>
+                                <p class="text-muted small">包含名称、类型、网格、户数、物业等字段</p>
+                                <a href="{{ url_for('import_export.download_template', data_type='building') }}" 
+                                   class="btn btn-outline-info">
+                                    <i class="bi bi-download me-2"></i>下载模板
+                                </a>
+                            </div>
+                        </div>
+                        <!-- 未来扩展更多模板 -->
+                    </div>
                 </div>
+            </div>
+
+            <!-- 数据导出卡片 -->
+            <div class="card shadow-sm mb-5">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="bi bi-cloud-download-fill me-2"></i>数据导出</h4>
+                </div>
+                <div class="card-body p-5">
+                    <p class="text-muted mb-4">导出当前系统中的数据为 Excel 文件，可用于备份或分析。</p>
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <div class="border rounded p-4 text-center hover-shadow transition">
+                                <i class="bi bi-person-lines-fill text-success" style="font-size: 3rem;"></i>
+                                <h5 class="mt-3">导出全部人员</h5>
+                                <p class="text-muted small">包含所有字段及重点人员标记</p>
+                                <a href="{{ url_for('import_export.export', data_type='person') }}" 
+                                   class="btn btn-success">
+                                    <i class="bi bi-box-arrow-down me-2"></i>立即导出
+                                </a>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="border rounded p-4 text-center hover-shadow transition">
+                                <i class="bi bi-buildings text-warning" style="font-size: 3rem;"></i>
+                                <h5 class="mt-3">导出全部小区/建筑</h5>
+                                <p class="text-muted small">包含物业、设施、联系人等完整信息</p>
+                                <a href="{{ url_for('import_export.export', data_type='building') }}" 
+                                   class="btn btn-warning">
+                                    <i class="bi bi-box-arrow-down me-2"></i>立即导出
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 操作提示 -->
+            <div class="text-center text-muted small">
+                <p>如遇导入问题，请检查文件格式是否与模板一致，或联系系统管理员。</p>
+                <p>Cortana Grid © 2026 - 为社区治理而生</p>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .hover-shadow {
+        transition: all 0.3s ease;
+    }
+    .hover-shadow:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.15) !important;
+    }
+    .transition {
+        transition: all 0.3s ease;
+    }
+</style>
 {% endblock %}
