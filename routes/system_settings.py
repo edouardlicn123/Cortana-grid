@@ -1,6 +1,6 @@
 # routes/system_settings.py
-# 系统设置路由模块（完整最终版 - 2026-01-03）
-# 新增：网格分配管理页面及完整后台逻辑
+# 系统设置路由模块（完整最终版 - 2026-01-04）
+# 更新：所有管理员新增用户默认密码统一为 a12345678
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
@@ -151,7 +151,7 @@ def reset_password(user_id):
     flash('用户密码已重置为默认值，将在下次登录时强制修改', 'success')
     return redirect(url_for('system_settings.index', tab='users'))
 
-# 添加新用户
+# 添加新用户（强制默认密码 a12345678）
 @system_settings_bp.route('/system_settings/add_user', methods=['POST'])
 @login_required
 @permission_required('system:view')
@@ -169,6 +169,7 @@ def add_user():
         flash('用户名已存在，请选择其他用户名', 'error')
         return redirect(url_for('system_settings.index', tab='users'))
 
+    # 强制统一默认密码
     default_password = 'a12345678'
     password_hash = generate_password_hash(default_password)
 
@@ -193,8 +194,9 @@ def add_user():
 
             conn.commit()
 
-        flash(f'用户 "{username}" 添加成功！默认密码：{default_password}（请尽快告知用户修改）', 'success')
-        logger.info(f"管理员 {current_user.username} 添加新用户: {username}")
+        flash(f'用户 "{username}" 添加成功！默认密码：{default_password}（请务必告知用户登录后立即修改）', 'success')
+        logger.info(f"管理员 {current_user.username} 添加新用户: {username}（默认密码已设置）")
+
     except Exception as e:
         logger.error(f"添加用户失败: {e}")
         flash('添加用户失败，请检查数据后重试', 'error')
