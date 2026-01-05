@@ -1,10 +1,5 @@
 # code2ai.py
-# 项目代码打包工具 - 最新进度版（2026-01-04）
-# 当前状态：三大核心模块完全独立（grid/person/building）
-# 路由规范：复数路径 + 独立蓝图
-# 模板统一：people.html / buildings.html / grids.html
-# 已彻底移除 Bootstrap，保留自定义样式
-# 已排除 downloads 文件夹（用户导出文件）
+
 
 import os
 import datetime
@@ -152,15 +147,6 @@ def generate_output():
         f.write(f"# 项目路径: {PROJECT_ROOT}\n")
         f.write(f"# ====================================================================\n\n")
         f.write(f"当前项目状态：重构完成，核心模块高度独立\n")
-        f.write(f"主要特性：\n")
-        f.write(f"- 三大核心模块完全独立：grid / person / building\n")
-        f.write(f"- 路由路径统一复数形式：/grids /people /buildings\n")
-        f.write(f"- 数据权限隔离完整：网格员只能操作自己网格数据\n")
-        f.write(f"- 导入导出功能完善：支持 Excel 导入/导出 + 中文表头 + 注释行\n")
-        f.write(f"- 个人设置完整：姓名、分页、主题切换\n")
-        f.write(f"- 已彻底移除 Bootstrap，全部使用自定义样式\n")
-        f.write(f"- 已打包所有说明文档（根目录 + docs/）\n")
-        f.write(f"- 已排除：downloads 文件夹、数据库文件、Bootstrap、缓存目录\n")
         f.write(f"# ====================================================================\n\n")
 
         collected = collect_files()
@@ -200,7 +186,6 @@ def generate_output():
     print(f"代码包已生成：{output_file}")
     print(f"共打包 {total_files} 个文件")
     print("打包完成，已完全匹配当前重构进度，可直接用于 AI 分析！")
-    print("Well done, Chief. 项目已达到生产级水准！")
 
 
 if __name__ == '__main__':
