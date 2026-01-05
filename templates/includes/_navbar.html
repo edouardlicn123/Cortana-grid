@@ -1,8 +1,9 @@
 {# templates/includes/_navbar.html #}
-{# 导航栏 - 最终稳定版（登录/未登录安全，权限菜单精准显示）#}
+{# 导航栏 - 最终稳定版（未登录时主菜单完全隐藏，只显示品牌名 + 登录按钮）#}
 
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm fixed-top">
     <div class="container-fluid">
+        <!-- 品牌名称：无论登录与否都显示，点击跳转到概览（未登录会自动重定向到登录页） -->
         <a class="navbar-brand fw-bold" href="{{ url_for('main.overview') }}">
             <i class="bi bi-house-door me-2"></i>{{ community_name }}
         </a>
@@ -13,59 +14,61 @@
         </button>
 
         <div class="collapse navbar-collapse" id="navbarContent">
+            <!-- 只有登录后才显示左侧主菜单 -->
+            {% if current_user.is_authenticated %}
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                <!-- 概览（所有登录用户可见） -->
+                <!-- 概览：登录后可见 -->
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('main.overview') }}">
                         <i class="bi bi-speedometer2 me-1"></i>概览
                     </a>
                 </li>
 
-                <!-- 数据管理菜单 - 只在登录后显示 -->
-                {% if current_user.is_authenticated %}
-                    <li class="nav-item dropdown dropdown-hover">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
-                           aria-expanded="false">
-                            <i class="bi bi-database me-1"></i>数据管理
+                <!-- 数据管理下拉菜单 -->
+                <li class="nav-item dropdown dropdown-hover">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
+                       aria-expanded="false">
+                        <i class="bi bi-database me-1"></i>数据管理
+                    </a>
+                    <ul class="dropdown-menu">
+                        {% if current_user.has_permission('resource:person:view') %}
+                            <li><a class="dropdown-item" href="{{ url_for('person.index') }}">
+                                <i class="bi bi-people me-2"></i>人员管理</a></li>
+                        {% endif %}
+
+                        {% if current_user.has_permission('resource:building:view') %}
+                            <li><a class="dropdown-item" href="{{ url_for('building.index') }}">
+                                <i class="bi bi-building me-2"></i>小区/建筑</a></li>
+                        {% endif %}
+
+                        {% if 'super_admin' in current_user.roles or 'community_admin' in current_user.roles %}
+                            <li><a class="dropdown-item" href="{{ url_for('grid.index') }}">
+                                <i class="bi bi-grid-3x3-gap me-2"></i>网格管理</a></li>
+                        {% endif %}
+
+                        {% if current_user.has_permission('import_export:all') %}
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('import_export.index') }}">
+                                <i class="bi bi-arrow-down-up me-2"></i>导入导出</a></li>
+                        {% endif %}
+                    </ul>
+                </li>
+
+                <!-- 系统设置：仅管理员可见 -->
+                {% if show_settings %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('system_settings.index') }}">
+                            <i class="bi bi-shield-lock me-1"></i>系统设置
                         </a>
-                        <ul class="dropdown-menu">
-                            {% if current_user.has_permission('resource:person:view') %}
-                                <li><a class="dropdown-item" href="{{ url_for('person.index') }}">
-                                    <i class="bi bi-people me-2"></i>人员管理</a></li>
-                            {% endif %}
-
-                            {% if current_user.has_permission('resource:building:view') %}
-                                <li><a class="dropdown-item" href="{{ url_for('building.index') }}">
-                                    <i class="bi bi-building me-2"></i>小区/建筑</a></li>
-                            {% endif %}
-
-                            {% if current_user.is_authenticated and ('super_admin' in current_user.roles or 'community_admin' in current_user.roles) %}
-                                <li><a class="dropdown-item" href="{{ url_for('grid.index') }}">
-                                    <i class="bi bi-grid-3x3-gap me-2"></i>网格管理</a></li>
-                            {% endif %}
-
-                            {% if current_user.has_permission('import_export:all') %}
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{{ url_for('import_export.index') }}">
-                                    <i class="bi bi-arrow-down-up me-2"></i>导入导出</a></li>
-                            {% endif %}
-                        </ul>
                     </li>
-
-                    <!-- 系统设置 - 使用全局变量，只管理员可见 -->
-                    {% if show_settings %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('system_settings.index') }}">
-                                <i class="bi bi-shield-lock me-1"></i>系统设置
-                            </a>
-                        </li>
-                    {% endif %}
                 {% endif %}
             </ul>
+            {% endif %}
 
+            <!-- 右侧用户区域 -->
             <ul class="navbar-nav ms-auto">
                 {% if current_user.is_authenticated %}
-                    <!-- 已登录用户菜单 -->
+                    <!-- 已登录：显示用户下拉菜单 -->
                     <li class="nav-item dropdown dropdown-hover">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
                            aria-expanded="false">
@@ -82,7 +85,7 @@
                         </ul>
                     </li>
                 {% else %}
-                    <!-- 未登录只显示登录链接 -->
+                    <!-- 未登录：只显示登录按钮 -->
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('auth.login') }}">
                             <i class="bi bi-box-arrow-in-right me-1"></i>登录
