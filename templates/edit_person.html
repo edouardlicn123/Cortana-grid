@@ -1,351 +1,362 @@
-{# templates/edit_person.html #}
-{# 新增/编辑人员共用模板 - 户籍详细地址改为常显、非必填，不受户籍小区/建筑选择影响 #}
-
+<!-- templates/edit_person.html - 基于旧版本完整恢复（2026-01-05） -->
 {% extends "base.html" %}
 {% block title %}{{ '编辑人员' if person else '添加人员' }}{% endblock %}
 
+{% block page_styles %}
+<style>
+    .content-wrapper {
+        padding-top: 90px;
+    }
+    @media (max-width: 768px) {
+        .content-wrapper {
+            padding-top: 80px;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-lg-11 col-xl-10">
-            <h2 class="mb-5 text-center fw-bold text-primary">
-                <i class="bi bi-person-plus-fill me-3"></i>
-                {{ '编辑人员信息' if person else '添加新人员' }}
-            </h2>
+<div class="content-wrapper">
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-11 col-xl-10">
+                <h2 class="mb-5 text-center fw-bold text-primary">
+                    <i class="bi bi-person-plus-fill me-3"></i>
+                    {{ '编辑人员信息' if person else '添加新人员' }}
+                </h2>
 
-            <form method="POST" enctype="multipart/form-data">
-                {{ form.csrf_token if form else '' }}
-
-                <!-- 基本信息 -->
-                <div class="card shadow-sm mb-5">
-                    <div class="card-header bg-primary text-white py-3">
-                        <h5 class="mb-0"><i class="bi bi-person me-2"></i>基本信息</h5>
-                    </div>
-                    <div class="card-body p-5">
-                        <div class="row g-4">
-                            <div class="col-md-4">
-                                <label class="form-label fw-bold">姓名 <span class="text-danger">*</span></label>
-                                <input type="text" name="name" class="form-control form-control-lg" 
-                                       value="{{ person.name if person else '' }}" required>
-                            </div>
-
-                            <div class="col-md-4">
-                                <label class="form-label fw-bold">身份证号</label>
-                                <input type="text" name="id_card" id="id_card" class="form-control form-control-lg" 
-                                       value="{{ person.id_card if person else '' }}" maxlength="18">
-                                <small class="text-muted">若无身份证可留空</small>
-                                <small id="id-card-error" class="text-danger d-block mt-1" style="display: none;"></small>
-                            </div>
-
-                            <div class="col-md-4">
-                                <label class="form-label fw-bold">性别 <span class="text-danger">*</span></label>
-                                <select name="gender" id="gender" class="form-select form-select-lg" required>
-                                    <option value="">-- 请选择 --</option>
-                                    <option value="男" {% if person and person.gender == '男' %}selected{% endif %}>男</option>
-                                    <option value="女" {% if person and person.gender == '女' %}selected{% endif %}>女</option>
-                                </select>
-                            </div>
-
-                            <div class="col-md-4">
-                                <label class="form-label">出生日期</label>
-                                <input type="text" name="birth_date" id="birth_date" class="form-control" placeholder="YYYYMMDD"
-                                       value="{{ person.birth_date if person else '' }}" maxlength="8">
-                                <small class="text-muted">格式：YYYYMMDD（如 19900101）</small>
-                            </div>
-
-                            <div class="col-md-4">
-                                <label class="form-label">联系电话</label>
-                                <input type="text" name="phones" class="form-control" placeholder="多个用;分隔"
-                                       value="{{ person.phones if person else '' }}">
-                            </div>
-
-                            <div class="col-md-4">
-                                <label class="form-label">人员类型</label>
-                                <select name="person_type" class="form-select">
-                                    <option value="常住人口" {% if not person or person.person_type == '常住人口' %}selected{% endif %}>常住人口</option>
-                                    <option value="流动人口" {% if person and person.person_type == '流动人口' %}selected{% endif %}>流动人口</option>
-                                </select>
-                            </div>
-
-                            <!-- 使用其他证件 -->
-                            <div class="col-12">
-                                <div class="form-check form-switch mb-4">
-                                    <input class="form-check-input" type="checkbox" role="switch" id="has_other_id"
-                                           {% if person and (person.other_id_type or person.passport) %}checked{% endif %}>
-                                    <label class="form-check-label fw-bold fs-5" for="has_other_id">
-                                        使用其他证件（如护照、军人证等）
-                                    </label>
-                                </div>
-                                <div id="other_id_group" class="row g-4" style="display: {% if person and (person.other_id_type or person.passport) %}block{% else %}none{% endif %};">
-                                    <div class="col-md-6">
-                                        <label class="form-label">证件类型</label>
-                                        <select name="other_id_type" class="form-select">
-                                            <option value="">-- 请选择 --</option>
-                                            <option value="护照" {% if person and person.other_id_type == '护照' %}selected{% endif %}>护照</option>
-                                            <option value="军人证" {% if person and person.other_id_type == '军人证' %}selected{% endif %}>军人证</option>
-                                            <option value="学生证" {% if person and person.other_id_type == '学生证' %}selected{% endif %}>学生证</option>
-                                            <option value="港澳通行证" {% if person and person.other_id_type == '港澳通行证' %}selected{% endif %}>港澳通行证</option>
-                                            <option value="台湾通行证" {% if person and person.other_id_type == '台湾通行证' %}selected{% endif %}>台湾通行证</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label">证件号码</label>
-                                        <input type="text" name="passport" class="form-control"
-                                               value="{{ person.passport if person else '' }}">
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- 现住地址 -->
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold">现住小区/建筑 <span class="text-danger">*</span></label>
-                                <select name="living_building_id" class="form-select form-select-lg" required>
-                                    <option value="">-- 请选择 --</option>
-                                    {% for b in buildings %}
-                                    <option value="{{ b.id }}" {% if person and person.living_building_id == b.id %}selected{% endif %}>
-                                        {{ b.name }}
-                                    </option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold">现住详细门牌 <span class="text-danger">*</span></label>
-                                <input type="text" name="address_detail" class="form-control form-control-lg"
-                                       value="{{ person.address_detail if person else '' }}" required>
-                            </div>
+                <form method="POST" enctype="multipart/form-data">
+                    <!-- 基本信息 -->
+                    <div class="card shadow-sm mb-5">
+                        <div class="card-header bg-primary text-white py-3">
+                            <h5 class="mb-0"><i class="bi bi-person me-2"></i>基本信息</h5>
                         </div>
-                    </div>
-                </div>
-
-                <!-- 户籍信息 -->
-                <div class="card shadow-sm mb-5">
-                    <div class="card-header bg-info text-white py-3">
-                        <h5 class="mb-0"><i class="bi bi-house-door me-2"></i>户籍信息</h5>
-                    </div>
-                    <div class="card-body p-5">
-                        <div class="row g-4">
-                            <div class="col-md-6">
-                                <label class="form-label">户籍小区/建筑</label>
-                                <select name="household_building_id" class="form-select form-select-lg" id="household_building_select">
-                                    <option value="">-- 非本社区户籍或未知 --</option>
-                                    {% for b in buildings %}
-                                    <option value="{{ b.id }}" {% if person and person.household_building_id == b.id %}selected{% endif %}>
-                                        {{ b.name }}
-                                    </option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-
-                            <!-- 户籍详细地址：常显、非必填 -->
-                            <div class="col-md-6">
-                                <label class="form-label">户籍详细地址</label>
-                                <input type="text" name="household_address" id="household_address" class="form-control"
-                                       value="{{ person.household_address if person else '' }}"
-                                       placeholder="如：北京市朝阳区xx街道xx号">
-                                <small class="text-muted">非本社区户籍时建议填写，可选</small>
-                            </div>
-
-                            <div class="col-md-4">
-                                <label class="form-label">户编号</label>
-                                <input type="text" name="family_id" class="form-control" 
-                                       value="{{ person.family_id if person else '' }}">
-                            </div>
-
-                            <div class="col-md-4">
-                                <label class="form-label">户籍迁入日期</label>
-                                <input type="text" name="household_entry_date" class="form-control" placeholder="YYYYMMDD"
-                                       value="{{ person.household_entry_date if person else '' }}" maxlength="8">
-                            </div>
-
-                            <!-- 人户分离 -->
-                            <div class="col-12 mt-4">
-                                <div class="form-check form-switch mb-4">
-                                    <input class="form-check-input" type="checkbox" role="switch" id="is_separated"
-                                           {% if person and person.is_separated %}checked{% endif %}>
-                                    <label class="form-check-label fw-bold fs-5" for="is_separated">
-                                        人户分离
-                                    </label>
+                        <div class="card-body p-5">
+                            <div class="row g-4">
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">姓名 <span class="text-danger">*</span></label>
+                                    <input type="text" name="name" class="form-control form-control-lg" 
+                                           value="{{ person.name if person else '' }}" required>
                                 </div>
-                                <div id="current_residence_group" class="ms-5" style="display: {% if person and person.is_separated %}block{% else %}none{% endif %};">
-                                    <label class="form-label">实际居住地</label>
-                                    <input type="text" name="current_residence" class="form-control"
-                                           value="{{ person.current_residence if person else '' }}" placeholder="如：暂住深圳市福田区">
-                                </div>
-                            </div>
 
-                            <!-- 已迁出本社区 -->
-                            <div class="col-12 mt-4">
-                                <div class="form-check form-switch mb-4">
-                                    <input class="form-check-input" type="checkbox" role="switch" id="is_migrated_out"
-                                           {% if person and person.is_migrated_out %}checked{% endif %}>
-                                    <label class="form-check-label fw-bold fs-5" for="is_migrated_out">
-                                        已迁出本社区
-                                    </label>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">身份证号</label>
+                                    <input type="text" name="id_card" id="id_card" class="form-control form-control-lg" 
+                                           value="{{ person.id_card if person else '' }}" maxlength="18">
+                                    <small class="text-muted">若无身份证可留空</small>
+                                    <small id="id-card-error" class="text-danger d-block mt-1" style="display: none;"></small>
                                 </div>
-                                <div id="migration_group" class="row g-4 ms-5" style="display: {% if person and person.is_migrated_out %}block{% else %}none{% endif %};">
-                                    <div class="col-md-6">
-                                        <label class="form-label">迁出日期</label>
-                                        <input type="text" name="household_exit_date" class="form-control" placeholder="YYYYMMDD"
-                                               value="{{ person.household_exit_date if person else '' }}" maxlength="8">
+
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">性别 <span class="text-danger">*</span></label>
+                                    <select name="gender" id="gender" class="form-select form-select-lg" required>
+                                        <option value="">-- 请选择 --</option>
+                                        <option value="男" {% if person and person.gender == '男' %}selected{% endif %}>男</option>
+                                        <option value="女" {% if person and person.gender == '女' %}selected{% endif %}>女</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label">出生日期</label>
+                                    <input type="text" name="birth_date" id="birth_date" class="form-control" placeholder="YYYYMMDD"
+                                           value="{{ person.birth_date if person else '' }}" maxlength="8">
+                                    <small class="text-muted">格式：YYYYMMDD（如 19900101）</small>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label">联系电话</label>
+                                    <input type="text" name="phones" class="form-control" placeholder="多个用;分隔"
+                                           value="{{ person.phones if person else '' }}">
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label">人员类型</label>
+                                    <select name="person_type" class="form-select">
+                                        <option value="常住人口" {% if not person or person.person_type == '常住人口' %}selected{% endif %}>常住人口</option>
+                                        <option value="流动人口" {% if person and person.person_type == '流动人口' %}selected{% endif %}>流动人口</option>
+                                    </select>
+                                </div>
+
+                                <!-- 使用其他证件 -->
+                                <div class="col-12">
+                                    <div class="form-check form-switch mb-4">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="has_other_id"
+                                               {% if person and (person.other_id_type or person.passport) %}checked{% endif %}>
+                                        <label class="form-check-label fw-bold fs-5" for="has_other_id">
+                                            使用其他证件（如护照、军人证等）
+                                        </label>
                                     </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label">迁往地</label>
-                                        <input type="text" name="migration_destination" class="form-control"
-                                               value="{{ person.migration_destination if person else '' }}">
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- 已死亡 -->
-                            <div class="col-12 mt-4">
-                                <div class="form-check form-switch mb-4">
-                                    <input class="form-check-input" type="checkbox" role="switch" id="is_deceased"
-                                           {% if person and person.is_deceased %}checked{% endif %}>
-                                    <label class="form-check-label fw-bold fs-5 text-danger" for="is_deceased">
-                                        已死亡
-                                    </label>
-                                </div>
-                                <div id="death_group" class="ms-5" style="display: {% if person and person.is_deceased %}block{% else %}none{% endif %};">
-                                    <label class="form-label text-danger">死亡日期</label>
-                                    <input type="text" name="death_date" class="form-control" placeholder="YYYYMMDD"
-                                           value="{{ person.death_date if person else '' }}" maxlength="8">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 次要信息与重点人员 -->
-                <div class="card shadow-sm mb-5">
-                    <div class="card-header bg-secondary text-white py-3">
-                        <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>次要信息与重点人员</h5>
-                    </div>
-                    <div class="card-body p-5">
-                        <div class="row g-4">
-                            <div class="col-md-3">
-                                <label class="form-label">民族</label>
-                                <input type="text" name="nationality" class="form-control" 
-                                       value="{{ person.nationality if person else '' }}" placeholder="如：汉族">
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label">政治面貌</label>
-                                <select name="political_status" class="form-select">
-                                    <option value="">-- 请选择 --</option>
-                                    {% set statuses = ['中共党员', '中共预备党员', '共青团员', '群众', '无党派人士', '民主党派', '其他'] %}
-                                    {% for s in statuses %}
-                                    <option value="{{ s }}" {% if person and person.political_status == s %}selected{% endif %}>{{ s }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label">婚姻状况</label>
-                                <select name="marital_status" class="form-select">
-                                    <option value="">-- 请选择 --</option>
-                                    {% set marital = ['未婚', '已婚', '离异', '丧偶', '再婚'] %}
-                                    {% for m in marital %}
-                                    <option value="{{ m }}" {% if person and person.marital_status == m %}selected{% endif %}>{{ m }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label">文化程度</label>
-                                <select name="education" class="form-select">
-                                    <option value="">-- 请选择 --</option>
-                                    {% set edu = ['文盲', '小学', '初中', '高中', '中专', '大专', '本科', '硕士', '博士'] %}
-                                    {% for e in edu %}
-                                    <option value="{{ e }}" {% if person and person.education == e %}selected{% endif %}>{{ e }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-
-                            <div class="col-md-6">
-                                <label class="form-label">工作/学习情况</label>
-                                <select name="work_study" class="form-select">
-                                    <option value="">-- 请选择 --</option>
-                                    {% set ws = ['在职', '在校', '退休', '无业', '务农', '经商', '个体', '自由职业', '其他'] %}
-                                    {% for w in ws %}
-                                    <option value="{{ w }}" {% if person and person.work_study == w %}selected{% endif %}>{{ w }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-
-                            <div class="col-md-6">
-                                <label class="form-label">健康状况</label>
-                                <select name="health" class="form-select">
-                                    <option value="">-- 请选择 --</option>
-                                    {% set healths = ['健康', '良好', '一般', '慢性病', '残疾', '重病'] %}
-                                    {% for h in healths %}
-                                    <option value="{{ h }}" {% if person and person.health == h %}selected{% endif %}>{{ h }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-
-                            <div class="col-12">
-                                <label class="form-label">备注信息</label>
-                                <textarea name="notes" class="form-control" rows="4">{{ person.notes if person else '' }}</textarea>
-                            </div>
-
-                            <!-- 重点人员标记 -->
-                            <div class="col-12 mt-4">
-                                <div class="form-check form-switch mb-4">
-                                    <input class="form-check-input" type="checkbox" role="switch" id="is_key_person"
-                                           {% if person and person.is_key_person %}checked{% endif %}>
-                                    <label class="form-check-label fw-bold fs-5 text-danger" for="is_key_person">
-                                        <i class="bi bi-exclamation-triangle me-2"></i>重点人员标记
-                                    </label>
-                                </div>
-                                <div id="key_categories_group" class="row g-3" style="display: {% if person and person.is_key_person %}block{% else %}none{% endif %};">
-                                    <label class="form-label fw-bold">重点类别（可多选）</label>
-                                    {% set categories = ['独居老人', '留守儿童', '低保户', '残疾人', '精神障碍患者', '矫正对象', '社区矫正', '吸毒人员', '艾滋病患者', '信访人员', '涉邪教', '其他重点'] %}
-                                    {% for cat in categories %}
-                                    <div class="col-md-6">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="key_categories" value="{{ cat }}"
-                                                   id="cat_{{ loop.index }}" {% if person and cat in (person.key_categories|default('')|split(',')) %}checked{% endif %}>
-                                            <label class="form-check-label" for="cat_{{ loop.index }}">{{ cat }}</label>
+                                    <div id="other_id_group" class="row g-4" style="display: {% if person and (person.other_id_type or person.passport) %}block{% else %}none{% endif %};">
+                                        <div class="col-md-6">
+                                            <label class="form-label">证件类型</label>
+                                            <select name="other_id_type" class="form-select">
+                                                <option value="">-- 请选择 --</option>
+                                                <option value="护照" {% if person and person.other_id_type == '护照' %}selected{% endif %}>护照</option>
+                                                <option value="军人证" {% if person and person.other_id_type == '军人证' %}selected{% endif %}>军人证</option>
+                                                <option value="学生证" {% if person and person.other_id_type == '学生证' %}selected{% endif %}>学生证</option>
+                                                <option value="港澳通行证" {% if person and person.other_id_type == '港澳通行证' %}selected{% endif %}>港澳通行证</option>
+                                                <option value="台湾通行证" {% if person and person.other_id_type == '台湾通行证' %}selected{% endif %}>台湾通行证</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">证件号码</label>
+                                            <input type="text" name="passport" class="form-control"
+                                                   value="{{ person.passport if person else '' }}">
                                         </div>
                                     </div>
-                                    {% endfor %}
+                                </div>
+
+                                <!-- 现住地址 -->
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">现住小区/建筑 <span class="text-danger">*</span></label>
+                                    <select name="living_building_id" class="form-select form-select-lg" required>
+                                        <option value="">-- 请选择 --</option>
+                                        {% for b in buildings %}
+                                        <option value="{{ b.id }}" {% if person and person.living_building_id == b.id %}selected{% endif %}>
+                                            {{ b.label }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">现住详细门牌 <span class="text-danger">*</span></label>
+                                    <input type="text" name="address_detail" class="form-control form-control-lg"
+                                           value="{{ person.address_detail if person else '' }}" required>
                                 </div>
                             </div>
+                        </div>
+                    </div>
 
-                            <!-- 人员照片 -->
-                            <div class="col-12 mt-5">
-                                <label class="form-label fw-bold">人员照片（支持多选，最多3张）</label>
-                                <input type="file" name="images" class="form-control" accept="image/*" multiple>
-                                <div id="preview-container" class="mt-4 d-flex flex-wrap gap-4">
-                                    {% if person and person.images %}
-                                        {% for img in person.images.split(',') if img.strip() %}
-                                        <div class="position-relative text-center">
-                                            <img src="{{ url_for('static', filename='uploads/' + img.strip()) }}" 
-                                                 class="rounded shadow" style="width:200px;height:200px;object-fit:cover;">
-                                            <small class="d-block mt-2 text-muted">{{ img.strip() }}</small>
+                    <!-- 户籍信息 -->
+                    <div class="card shadow-sm mb-5">
+                        <div class="card-header bg-info text-white py-3">
+                            <h5 class="mb-0"><i class="bi bi-house-door me-2"></i>户籍信息</h5>
+                        </div>
+                        <div class="card-body p-5">
+                            <div class="row g-4">
+                                <div class="col-md-6">
+                                    <label class="form-label">户籍小区/建筑</label>
+                                    <select name="household_building_id" class="form-select form-select-lg">
+                                        <option value="">-- 非本社区户籍或未知 --</option>
+                                        {% for b in buildings %}
+                                        <option value="{{ b.id }}" {% if person and person.household_building_id == b.id %}selected{% endif %}>
+                                            {{ b.label }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label">户籍详细地址</label>
+                                    <input type="text" name="household_address" class="form-control"
+                                           value="{{ person.household_address if person else '' }}"
+                                           placeholder="如：北京市朝阳区xx街道xx号">
+                                    <small class="text-muted">非本社区户籍时建议填写，可选</small>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label">户编号</label>
+                                    <input type="text" name="family_id" class="form-control" 
+                                           value="{{ person.family_id if person else '' }}">
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label">户籍迁入日期</label>
+                                    <input type="text" name="household_entry_date" class="form-control" placeholder="YYYYMMDD"
+                                           value="{{ person.household_entry_date if person else '' }}" maxlength="8">
+                                </div>
+
+                                <!-- 人户分离 -->
+                                <div class="col-12 mt-4">
+                                    <div class="form-check form-switch mb-4">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="is_separated"
+                                               {% if person and person.is_separated %}checked{% endif %}>
+                                        <label class="form-check-label fw-bold fs-5" for="is_separated">
+                                            人户分离
+                                        </label>
+                                    </div>
+                                    <div id="current_residence_group" class="ms-5" style="display: {% if person and person.is_separated %}block{% else %}none{% endif %};">
+                                        <label class="form-label">实际居住地</label>
+                                        <input type="text" name="current_residence" class="form-control"
+                                               value="{{ person.current_residence if person else '' }}" placeholder="如：暂住深圳市福田区">
+                                    </div>
+                                </div>
+
+                                <!-- 已迁出本社区 -->
+                                <div class="col-12 mt-4">
+                                    <div class="form-check form-switch mb-4">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="is_migrated_out"
+                                               {% if person and person.is_migrated_out %}checked{% endif %}>
+                                        <label class="form-check-label fw-bold fs-5" for="is_migrated_out">
+                                            已迁出本社区
+                                        </label>
+                                    </div>
+                                    <div id="migration_group" class="row g-4 ms-5" style="display: {% if person and person.is_migrated_out %}block{% else %}none{% endif %};">
+                                        <div class="col-md-6">
+                                            <label class="form-label">迁出日期</label>
+                                            <input type="text" name="household_exit_date" class="form-control" placeholder="YYYYMMDD"
+                                                   value="{{ person.household_exit_date if person else '' }}" maxlength="8">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">迁往地</label>
+                                            <input type="text" name="migration_destination" class="form-control"
+                                                   value="{{ person.migration_destination if person else '' }}">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 已死亡 -->
+                                <div class="col-12 mt-4">
+                                    <div class="form-check form-switch mb-4">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="is_deceased"
+                                               {% if person and person.is_deceased %}checked{% endif %}>
+                                        <label class="form-check-label fw-bold fs-5 text-danger" for="is_deceased">
+                                            已死亡
+                                        </label>
+                                    </div>
+                                    <div id="death_group" class="ms-5" style="display: {% if person and person.is_deceased %}block{% else %}none{% endif %};">
+                                        <label class="form-label text-danger">死亡日期</label>
+                                        <input type="text" name="death_date" class="form-control" placeholder="YYYYMMDD"
+                                               value="{{ person.death_date if person else '' }}" maxlength="8">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 次要信息与重点人员 -->
+                    <div class="card shadow-sm mb-5">
+                        <div class="card-header bg-secondary text-white py-3">
+                            <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>次要信息与重点人员</h5>
+                        </div>
+                        <div class="card-body p-5">
+                            <div class="row g-4">
+                                <div class="col-md-3">
+                                    <label class="form-label">民族</label>
+                                    <input type="text" name="nationality" class="form-control" 
+                                           value="{{ person.nationality if person else '' }}" placeholder="如：汉族">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">政治面貌</label>
+                                    <select name="political_status" class="form-select">
+                                        <option value="">-- 请选择 --</option>
+                                        {% set statuses = ['中共党员', '中共预备党员', '共青团员', '群众', '无党派人士', '民主党派', '其他'] %}
+                                        {% for s in statuses %}
+                                        <option value="{{ s }}" {% if person and person.political_status == s %}selected{% endif %}>{{ s }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">婚姻状况</label>
+                                    <select name="marital_status" class="form-select">
+                                        <option value="">-- 请选择 --</option>
+                                        {% set marital = ['未婚', '已婚', '离异', '丧偶', '再婚'] %}
+                                        {% for m in marital %}
+                                        <option value="{{ m }}" {% if person and person.marital_status == m %}selected{% endif %}>{{ m }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">文化程度</label>
+                                    <select name="education" class="form-select">
+                                        <option value="">-- 请选择 --</option>
+                                        {% set edu = ['文盲', '小学', '初中', '高中', '中专', '大专', '本科', '硕士', '博士'] %}
+                                        {% for e in edu %}
+                                        <option value="{{ e }}" {% if person and person.education == e %}selected{% endif %}>{{ e }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label">工作/学习情况</label>
+                                    <select name="work_study" class="form-select">
+                                        <option value="">-- 请选择 --</option>
+                                        {% set ws = ['在职', '在校', '退休', '无业', '务农', '经商', '个体', '自由职业', '其他'] %}
+                                        {% for w in ws %}
+                                        <option value="{{ w }}" {% if person and person.work_study == w %}selected{% endif %}>{{ w }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label">健康状况</label>
+                                    <select name="health" class="form-select">
+                                        <option value="">-- 请选择 --</option>
+                                        {% set healths = ['健康', '良好', '一般', '慢性病', '残疾', '重病'] %}
+                                        {% for h in healths %}
+                                        <option value="{{ h }}" {% if person and person.health == h %}selected{% endif %}>{{ h }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="col-12">
+                                    <label class="form-label">备注信息</label>
+                                    <textarea name="notes" class="form-control" rows="4">{{ person.notes if person else '' }}</textarea>
+                                </div>
+
+                                <!-- 重点人员标记 -->
+                                <div class="col-12 mt-4">
+                                    <div class="form-check form-switch mb-4">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="is_key_person"
+                                               {% if person and person.is_key_person %}checked{% endif %}>
+                                        <label class="form-check-label fw-bold fs-5 text-danger" for="is_key_person">
+                                            <i class="bi bi-exclamation-triangle me-2"></i>重点人员标记
+                                        </label>
+                                    </div>
+                                    <div id="key_categories_group" class="row g-3" style="display: {% if person and person.is_key_person %}block{% else %}none{% endif %};">
+                                        <label class="form-label fw-bold">重点类别（可多选）</label>
+                                        {% set categories = ['独居老人', '留守儿童', '低保户', '残疾人', '精神障碍患者', '矫正对象', '社区矫正', '吸毒人员', '艾滋病患者', '信访人员', '涉邪教', '其他重点'] %}
+                                        {% for cat in categories %}
+                                        <div class="col-md-6">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="key_categories" value="{{ cat }}"
+                                                       id="cat_{{ loop.index }}" 
+                                                       {% if person and person.key_categories and cat in person.key_categories.split(',') %}checked{% endif %}>
+                                                <label class="form-check-label" for="cat_{{ loop.index }}">{{ cat }}</label>
+                                            </div>
                                         </div>
                                         {% endfor %}
-                                    {% endif %}
+                                    </div>
+                                </div>
+
+                                <!-- 人员照片 -->
+                                <div class="col-12 mt-5">
+                                    <label class="form-label fw-bold">人员照片（支持多选，最多3张）</label>
+                                    <input type="file" name="images" class="form-control" accept="image/*" multiple>
+                                    <div id="preview-container" class="mt-4 d-flex flex-wrap gap-4">
+                                        {% if person and person.images %}
+                                            {% for img in person.images.split(',') if img.strip() %}
+                                            <div class="position-relative text-center">
+                                                <img src="{{ url_for('static', filename='uploads/' + img.strip()) }}" 
+                                                     class="rounded shadow" style="width:200px;height:200px;object-fit:cover;">
+                                                <small class="d-block mt-2 text-muted">{{ img.strip() }}</small>
+                                            </div>
+                                            {% endfor %}
+                                        {% endif %}
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- 提交按钮 -->
-                <div class="text-center mt-5">
-                    <button type="submit" class="btn btn-primary btn-lg px-5 shadow">
-                        <i class="bi bi-check-circle-fill me-2"></i>
-                        {{ '保存修改' if person else '完成添加' }}
-                    </button>
-                    <a href="{{ url_for('person.index') }}" class="btn btn-secondary btn-lg px-5 ms-4">
-                        <i class="bi bi-arrow-left me-2"></i>返回列表
-                    </a>
-                </div>
-            </form>
+                    <!-- 提交按钮 -->
+                    <div class="text-center mt-5">
+                        <button type="submit" class="btn btn-primary btn-lg px-5 shadow">
+                            <i class="bi bi-check-circle-fill me-2"></i>
+                            {{ '保存修改' if person else '完成添加' }}
+                        </button>
+                        <a href="{{ url_for('person.index') }}" class="btn btn-secondary btn-lg px-5 ms-4">
+                            <i class="bi bi-arrow-left me-2"></i>返回列表
+                        </a>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </div>
 
-{# 身份证自动解析 + 严格校验脚本（符合 GB/T 11643-1999） #}
+{# 身份证自动解析 + 严格校验脚本（保留原版） #}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const idCardInput = document.getElementById('id_card');
@@ -429,7 +440,10 @@ document.addEventListener('DOMContentLoaded', function () {
     idCardInput.addEventListener('change', processIdCard);
     idCardInput.addEventListener('blur', processIdCard);
 
-    processIdCard();  // 加载时触发
+    processIdCard();
 });
 </script>
+
+<!-- 引入通用联动脚本（照片预览 + 开关控制） -->
+<script src="{{ url_for('static', filename='js/person_edit.js') }}"></script>
 {% endblock %}

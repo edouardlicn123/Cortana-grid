@@ -1,0 +1,151 @@
+<!-- templates/view_person.html -->
+{% extends "base.html" %}
+{% block title %}查看人员详情 - {{ person.name }}{% endblock %}
+
+{% block page_styles %}
+<style>
+    body {
+        padding-top: 80px;
+    }
+    @media (max-width: 768px) {
+        body {
+            padding-top: 70px;
+        }
+    }
+    .detail-table th {
+        width: 30%;
+        background-color: #f8f9fa;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow mb-5">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center bg-primary text-white">
+                <h5 class="m-0 font-weight-bold">
+                    <i class="bi bi-person me-2"></i>{{ person.name }}
+                </h5>
+                <a href="{{ url_for('person.index') }}" class="btn btn-light btn-sm">
+                    <i class="bi bi-arrow-left me-1"></i>返回列表
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-bordered detail-table">
+                            <tr><th>姓名</th><td>{{ person.name }}</td></tr>
+                            <tr><th>身份证号</th><td>{{ person.id_card }}</td></tr>
+                            <tr><th>联系电话</th><td>{{ person.phone or '未填写' }}</td></tr>
+                            <tr><th>性别</th><td>{{ '男' if person.gender == 'male' else '女' if person.gender == 'female' else '未填写' }}</td></tr>
+                            <tr><th>出生日期</th><td>{{ person.birth_date or '未填写' }}</td></tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-bordered detail-table">
+                            <tr><th>居住建筑</th>
+                                <td>
+                                    {% if building %}
+                                        {{ building.name }} ({{ building.type_display }}) - {{ building.grid_name }}
+                                    {% else %}
+                                        未设置居住建筑
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr><th>户籍地址</th><td>{{ person.household_address or '未填写' }}</td></tr>
+                            <tr><th>政治面貌</th><td>{{ person.political_status or '未填写' }}</td></tr>
+                            <tr><th>人员类别</th><td>{{ person.category or '未填写' }}</td></tr>
+                            <tr><th>备注</th><td>{{ person.notes or '无' }}</td></tr>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="text-center mt-4">
+                    <a href="{{ url_for('person.edit', pid=person.id) }}" class="btn btn-warning me-3">
+                        <i class="bi bi-pencil-square me-1"></i>编辑人员信息
+                    </a>
+                    <a href="{{ url_for('person.index') }}" class="btn btn-secondary">
+                        <i class="bi bi-list-ul me-1"></i>返回人员列表
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}<!-- templates/view_person.html -->
+{% extends "base.html" %}
+{% block title %}查看人员详情 - {{ person.name }}{% endblock %}
+
+{% block page_styles %}
+<style>
+    body {
+        padding-top: 80px;
+    }
+    @media (max-width: 768px) {
+        body {
+            padding-top: 70px;
+        }
+    }
+    .detail-table th {
+        width: 30%;
+        background-color: #f8f9fa;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow mb-5">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center bg-primary text-white">
+                <h5 class="m-0 font-weight-bold">
+                    <i class="bi bi-person me-2"></i>{{ person.name }}
+                </h5>
+                <a href="{{ url_for('person.index') }}" class="btn btn-light btn-sm">
+                    <i class="bi bi-arrow-left me-1"></i>返回列表
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-bordered detail-table">
+                            <tr><th>姓名</th><td>{{ person.name }}</td></tr>
+                            <tr><th>身份证号</th><td>{{ person.id_card }}</td></tr>
+                            <tr><th>联系电话</th><td>{{ person.phone or '未填写' }}</td></tr>
+                            <tr><th>性别</th><td>{{ '男' if person.gender == 'male' else '女' if person.gender == 'female' else '未填写' }}</td></tr>
+                            <tr><th>出生日期</th><td>{{ person.birth_date or '未填写' }}</td></tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-bordered detail-table">
+                            <tr><th>居住建筑</th>
+                                <td>
+                                    {% if building %}
+                                        {{ building.name }} ({{ building.type_display }}) - {{ building.grid_name }}
+                                    {% else %}
+                                        未设置居住建筑
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr><th>户籍地址</th><td>{{ person.household_address or '未填写' }}</td></tr>
+                            <tr><th>政治面貌</th><td>{{ person.political_status or '未填写' }}</td></tr>
+                            <tr><th>人员类别</th><td>{{ person.category or '未填写' }}</td></tr>
+                            <tr><th>备注</th><td>{{ person.notes or '无' }}</td></tr>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="text-center mt-4">
+                    <a href="{{ url_for('person.edit', pid=person.id) }}" class="btn btn-warning me-3">
+                        <i class="bi bi-pencil-square me-1"></i>编辑人员信息
+                    </a>
+                    <a href="{{ url_for('person.index') }}" class="btn btn-secondary">
+                        <i class="bi bi-list-ul me-1"></i>返回人员列表
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,134 @@
+<!-- templates/view_building.html -->
+{% extends "base.html" %}
+{% block title %}查看建筑详情 - {{ building.name }}{% endblock %}
+
+{% block page_styles %}
+<style>
+    /* 解决固定导航栏遮挡内容问题 */
+    body {
+        padding-top: 80px; /* 根据您的导航栏高度调整，通常 70-90px */
+    }
+    @media (max-width: 768px) {
+        body {
+            padding-top: 70px;
+        }
+    }
+    .detail-table th {
+        width: 30%;
+        background-color: #f8f9fa;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card shadow mb-5">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center bg-primary text-white">
+                <h5 class="m-0 font-weight-bold">
+                    <i class="bi bi-building me-2"></i>
+                    {{ building.name }}
+                </h5>
+                <a href="{{ url_for('building.index') }}" class="btn btn-light btn-sm">
+                    <i class="bi bi-arrow-left me-1"></i>返回列表
+                </a>
+            </div>
+            <div class="card-body">
+                <!-- 基本信息 -->
+                <h6 class="border-bottom pb-2 mb-3 text-primary">基本信息</h6>
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <table class="table table-bordered detail-table">
+                            <tr><th>建筑类型</th><td>{{ building.type }}</td></tr>
+                            <tr><th>所属网格</th><td>{{ building.grid_name }}</td></tr>
+                            <tr><th>地址</th><td>{{ building.address or '未填写' }}</td></tr>
+                            <tr><th>建成年份</th><td>{{ building.build_year or '未知' }}</td></tr>
+                            <tr><th>总户数</th><td>{{ building.households or '未知' }}</td></tr>
+                            <tr><th>楼栋数</th><td>{{ building.buildings_count or '未知' }}</td></tr>
+                            <tr><th>约居住人数</th><td>{{ building.approx_residents or '未知' }}</td></tr>
+                            <tr><th>当前居住人数</th>
+                                <td><span class="badge bg-success fs-6">{{ person_count }}</span></td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-bordered detail-table">
+                            <tr><th>是否有燃气管道</th><td>{{ '是' if building.has_gas_pipeline else '否' }}</td></tr>
+                            <tr><th>物业费（元/㎡·月）</th><td>{{ building.property_fee or '未填写' }}</td></tr>
+                            <tr><th>电梯数</th><td>{{ building.elevators or '未知' }}</td></tr>
+                            <tr><th>室内停车位</th><td>{{ building.indoor_parking or '未知' }}</td></tr>
+                            <tr><th>室外停车位</th><td>{{ building.outdoor_parking or '未知' }}</td></tr>
+                            <tr><th>商业类型</th><td>{{ building.commercial_type or '无' }}</td></tr>
+                            <tr><th>是否外来建筑</th><td>{{ '是' if building.is_external else '否' }}</td></tr>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 物业与开发信息 -->
+                <h6 class="border-bottom pb-2 mb-3 text-primary">物业与开发信息</h6>
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <table class="table table-bordered detail-table">
+                            <tr><th>物业公司</th><td>{{ building.property_management_company or '未填写' }}</td></tr>
+                            <tr><th>物业联系电话</th><td>{{ building.property_contact_phone or '未填写' }}</td></tr>
+                            <tr><th>安保负责人</th><td>{{ building.security_manager or '未填写' }}</td></tr>
+                            <tr><th>安保电话</th><td>{{ building.security_manager_phone or '未填写' }}</td></tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-bordered detail-table">
+                            <tr><th>开发商</th><td>{{ building.developer or '未填写' }}</td></tr>
+                            <tr><th>施工单位</th><td>{{ building.constructor or '未填写' }}</td></tr>
+                            <tr><th>业主委员会联系人</th><td>{{ building.owners_committee_contact or '未填写' }}</td></tr>
+                            <tr><th>业委会电话</th><td>{{ building.owners_committee_phone or '未填写' }}</td></tr>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 业主/房东信息 -->
+                <h6 class="border-bottom pb-2 mb-3 text-primary">业主/房东信息</h6>
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <table class="table table-bordered detail-table">
+                            <tr><th>业主姓名</th><td>{{ building.owner_name or '未填写' }}</td></tr>
+                            <tr><th>业主电话</th><td>{{ building.owner_phone or '未填写' }}</td></tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-bordered detail-table">
+                            <tr><th>房东姓名</th><td>{{ building.landlord_name or '未填写' }}</td></tr>
+                            <tr><th>房东电话</th><td>{{ building.landlord_phone or '未填写' }}</td></tr>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 地理位置与备注 -->
+                <h6 class="border-bottom pb-2 mb-3 text-primary">地理位置与备注</h6>
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <table class="table table-bordered detail-table">
+                            <tr><th>经度</th><td>{{ building.longitude or '未设置' }}</td></tr>
+                            <tr><th>纬度</th><td>{{ building.latitude or '未设置' }}</td></tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-bordered detail-table">
+                            <tr><th>备注</th><td>{{ building.notes or '无备注' }}</td></tr>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 操作按钮 -->
+                <div class="text-center mt-4">
+                    <a href="{{ url_for('building.edit', bid=building.id) }}" class="btn btn-warning me-3">
+                        <i class="bi bi-pencil-square me-1"></i>编辑建筑信息
+                    </a>
+                    <a href="{{ url_for('building.index') }}" class="btn btn-secondary">
+                        <i class="bi bi-list-ul me-1"></i>返回建筑列表
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

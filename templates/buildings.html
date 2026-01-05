@@ -1,130 +1,111 @@
-{# templates/buildings.html #}
-{# 小区/建筑管理页面 - 完整稳定版（支持软删除，无查看按钮，避免 endpoint 错误） #}
-
+<!-- templates/buildings.html -->
 {% extends "base.html" %}
-{% block title %}小区/建筑管理{% endblock %}
+{% block title %}建筑管理{% endblock %}
+
+{% block page_styles %}
+<style>
+    /* 解决固定导航栏遮挡内容问题 - 增加顶部内边距 */
+    .content-wrapper {
+        padding-top: 90px; /* 根据您的导航栏实际高度调整（通常80-100px） */
+    }
+    @media (max-width: 768px) {
+        .content-wrapper {
+            padding-top: 80px;
+        }
+    }
+
+    .table th, .table td {
+        vertical-align: middle;
+    }
+    .btn-sm i {
+        font-size: 0.9rem;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container my-5">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 class="mb-0">小区/建筑管理</h3>
-        <a href="{{ url_for('building.add') }}" class="btn btn-success btn-lg">
-            <i class="bi bi-building-add me-2"></i>新增小区/建筑
-        </a>
-    </div>
-
-    <div class="card shadow-sm">
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th>名称</th>
-                            <th>类型</th>
-                            <th>所属网格</th>
-                            <th>状态</th>
-                            <th>操作</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% if buildings %}
-                            {% for b in buildings %}
-                            <tr {% if b.is_deleted %}class="table-secondary"{% endif %}>
-                                <td>
-                                    <strong>{{ b.name }}</strong>
-                                    {% if b.is_deleted %}<span class="text-muted small ms-2">(已停用)</span>{% endif %}
-                                </td>
-                                <td>
-                                    {% if b.type == 'residential_complex' %}住宅小区
-                                    {% elif b.type == 'private_residence' %}私人住宅
-                                    {% elif b.type == 'large_rental' %}大型出租屋
-                                    {% elif b.type == 'commercial' %}商业建筑
-                                    {% else %}{{ b.type }}{% endif %}
-                                </td>
-                                <td>{{ b.grid_name or '无' }}</td>
-                                <td>
-                                    {% if b.is_deleted %}
-                                        <span class="badge bg-secondary">已停用</span>
-                                    {% else %}
-                                        <span class="badge bg-success">正常</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    <!-- 停用按钮（仅未停用时显示） -->
-                                    {% if not b.is_deleted %}
-                                        <form method="POST" style="display:inline;" onsubmit="return confirm('确定要停用「{{ b.name }}」吗？停用后将无法在人员信息中选择此建筑，但历史数据保留。')">
-                                            <input type="hidden" name="action" value="deactivate">
-                                            <input type="hidden" name="bid" value="{{ b.id }}">
-                                            <button type="submit" class="btn btn-warning btn-sm">
-                                                <i class="bi bi-pause-circle me-2"></i>停用
-                                            </button>
-                                        </form>
-                                    {% else %}
-                                        <span class="text-muted small">已停用</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
+<!-- 新增一个 wrapper 来应用 padding -->
+<div class="content-wrapper">
+    <div class="row justify-content-center">
+        <div class="col-lg-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="m-0 font-weight-bold text-primary">
+                        <i class="bi bi-buildings me-2"></i>建筑/小区管理
+                    </h5>
+                    <a href="{{ url_for('building.add') }}" class="btn btn-success btn-sm">
+                        <i class="bi bi-plus-lg me-1"></i>新增建筑
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show mb-3" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
                             {% endfor %}
-                        {% else %}
-                            <tr>
-                                <td colspan="5" class="text-center py-5 text-muted">暂无建筑数据</td>
-                            </tr>
                         {% endif %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
+                    {% endwith %}
 
-    <!-- 新增建筑模态框 -->
-    <div class="modal fade" id="addBuildingModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <form method="POST">
-                    <div class="modal-header bg-primary text-white">
-                        <h5 class="modal-title"><i class="bi bi-building-add me-2"></i>新增小区/建筑</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold">名称 <span class="text-danger">*</span></label>
-                                <input type="text" name="name" class="form-control form-control-lg" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold">类型</label>
-                                <select name="type" class="form-select form-select-lg">
-                                    <option value="residential_complex">住宅小区</option>
-                                    <option value="private_residence">私人住宅</option>
-                                    <option value="large_rental">大型出租屋</option>
-                                    <option value="commercial">商业建筑</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                            <label for="grid_id" class="form-label">所属网格 <span class="text-danger">*</span></label>
-                            <select name="grid_id" id="grid_id" class="form-control" required>
-                                {% for grid in grids %}
-                                <option value="{{ grid.id }}" {% if building and building.grid_id == grid.id %}selected{% endif %}>
-                                    {{ grid.name }}
-                                </option>
-                                {% endfor %}
-                                {% if not grids %}
-                                <option value="" disabled>暂无可用网格</option>
+                    <div class="table-responsive">
+                        <table class="table table-hover table-bordered align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="5%">#</th>
+                                    <th width="30%">小区/建筑名称</th>
+                                    <th width="15%">类型</th>
+                                    <th width="15%">所属网格</th>
+                                    <th width="10%">居住人数</th>
+                                    <th width="25%" class="text-center">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if buildings %}
+                                    {% for b in buildings %}
+                                    <tr>
+                                        <td>{{ loop.index }}</td>
+                                        <td><strong>{{ b.name }}</strong></td>
+                                        <td>{{ b.type_display }}</td> {# 确保显示中文名称 #}
+                                        <td>{{ b.grid_name }}</td>
+                                        <td>
+                                            <span class="badge bg-info fs-6">
+                                                {{ b.person_count }}
+                                            </span>
+                                        </td>
+                                        <td class="text-center">
+                                            <a href="{{ url_for('building.view', bid=b.id) }}" 
+                                               class="btn btn-info btn-sm me-1" title="查看详情">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            <a href="{{ url_for('building.edit', bid=b.id) }}" 
+                                               class="btn btn-warning btn-sm me-1" title="编辑">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <form action="{{ url_for('building.delete', bid=b.id) }}" method="POST" class="d-inline">
+                                                <button type="submit" 
+                                                        class="btn btn-danger btn-sm" 
+                                                        title="删除"
+                                                        onclick="return confirm('确定要删除「{{ b.name }}」吗？此操作将软删除该建筑，且不可恢复！')">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted py-4">
+                                            <i class="bi bi-inbox fs-1 d-block mb-3"></i>
+                                            暂无建筑记录，请点击右上角“新增建筑”添加
+                                        </td>
+                                    </tr>
                                 {% endif %}
-                            </select>
-                            <div class="invalid-feedback">
-                                请选择所属网格
-                            </div>
-                            </div>
-                        </div>
+                            </tbody>
+                        </table>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary btn-lg" data-bs-dismiss="modal">取消</button>
-                        <button type="submit" class="btn btn-primary btn-lg px-5">
-                            <i class="bi bi-check-circle me-2"></i>确认添加
-                        </button>
-                    </div>
-                </form>
+                </div>
             </div>
         </div>
     </div>

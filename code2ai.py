@@ -7,7 +7,7 @@ import glob
 
 # 项目根目录
 PROJECT_ROOT = os.path.abspath(os.path.dirname(__file__))
-OUTPUT_DIR = os.path.join(PROJECT_ROOT, 'code2ai')
+OUTPUT_DIR = os.path.join(PROJECT_ROOT, '../code2ai')
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # ==================== 要包含的文件分类 ====================

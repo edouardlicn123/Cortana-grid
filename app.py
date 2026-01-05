@@ -1,11 +1,25 @@
 # app.py
 # 主应用文件 - Cortana Grid v2.0 极简三分层最终版（2026-01-03 更新：导入导出独立目录）
+# 修改：移除重复的 logging.basicConfig，统一使用 DEBUG 级别，确保所有错误日志可见
 
 import os
 import logging
 from flask import Flask, render_template, redirect, url_for, flash
 from flask_login import LoginManager, current_user
 from datetime import datetime
+
+# ============ 统一的日志配置（只保留这一段！） ============
+logging.basicConfig(level=logging.DEBUG)  # 强制显示所有级别日志
+logger = logging.getLogger('cortana_grid')
+logger.setLevel(logging.DEBUG)
+
+# 添加控制台处理器，确保在终端看到所有日志
+handler = logging.StreamHandler()
+handler.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+# ====================================================
 
 # ====================== Flask 应用创建 ======================
 app = Flask(__name__)
@@ -27,9 +41,7 @@ os.makedirs(DOWNLOADS_FOLDER, exist_ok=True)
 os.makedirs(IMPORTS_FOLDER, exist_ok=True)
 os.makedirs(EXPORTS_FOLDER, exist_ok=True)
 
-# 日志
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger('cortana_grid')
+# 输出路径信息（使用已配置好的 logger）
 logger.info(f"instance_path: {app.instance_path}")
 logger.info(f"upload_folder: {UPLOAD_FOLDER}")
 logger.info(f"downloads_folder: {DOWNLOADS_FOLDER}")
@@ -122,8 +134,6 @@ from routes.import_export import import_export_bp
 from routes.settings import settings_bp
 from routes.system_settings import system_settings_bp
 
-
-
 app.register_blueprint(auth_bp)
 app.register_blueprint(main_bp)
 app.register_blueprint(person_bp)
@@ -132,7 +142,6 @@ app.register_blueprint(grid_bp)
 app.register_blueprint(import_export_bp)
 app.register_blueprint(settings_bp)
 app.register_blueprint(system_settings_bp)
-
 
 # ====================== 导入导出初始化 ======================
 try:
