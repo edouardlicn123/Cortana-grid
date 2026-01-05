@@ -16,144 +16,18 @@
     <!-- 动态样式部分（基础样式 + 主题 + 防缓存） -->
     {% include 'includes/_styles.html' %}
     {% block page_styles %}{% endblock %} 
+
+    {% if current_user.is_authenticated %}
+    <script>
+        window.watermarkUsername = "{{ current_user.display_name | e }}";
+    </script>
+    {% endif %}
+
     {% include 'includes/_scripts.html' %}
-
-{% if current_user.is_authenticated %}
-<style>
-    /* 预留样式，实际由 JS 强制注入，防止 CSS 被覆盖 */
-    #watermark-overlay {
-        image-rendering: crisp-edges !important;  /* 强制锐利 */
-    }
-</style>
-
-<script>
-    window.watermarkUsername = "{{ current_user.real_name | default(current_user.username, true) | e }}";
-</script>
-
-<script src="{{ url_for('static', filename='js/water.js') }}" defer></script>
-{% endif %}
 
 </head>
 
 <body>
-   <!-- ====================== 永久水印层（直接内置） ====================== -->
-    {% if current_user.is_authenticated %}
-    <div id="permanent-watermark-overlay"></div>
-
-    <style>
-        #permanent-watermark-overlay {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100vw !important;
-            height: 100vh !important;
-            pointer-events: none !important;
-            z-index: 999999 !important;
-            background-repeat: repeat !important;
-            background-size: 180px 80px !important;
-            image-rendering: crisp-edges !important;
-            display: block !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-        }
-    </style>
-
-    <script>
-    (function () {
-        'use strict';
-
-        const username = "{{ current_user.display_name | e }}";  // 使用 display_name（优先 full_name）
-        const watermarkText = username.trim() || '未知用户';
-
-        const config = {
-            tileWidth: 180,
-            tileHeight: 80,
-            fontSize: 14,
-            opacity: 0.18,
-            rotate: -25,
-            color: '#888888'
-        };
-
-        function createWatermark() {
-            // 移除旧的（防止重复）
-            const existing = document.getElementById('permanent-watermark-overlay');
-            if (existing) existing.remove();
-
-            const overlay = document.createElement('div');
-            overlay.id = 'permanent-watermark-overlay';
-
-            const canvas = document.createElement('canvas');
-            canvas.width = config.tileWidth * 3;
-            canvas.height = config.tileHeight * 3;
-
-            const ctx = canvas.getContext('2d');
-            ctx.font = `${config.fontSize}px Arial, "Microsoft YaHei", sans-serif`;
-            ctx.fillStyle = config.color;
-            ctx.globalAlpha = config.opacity;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-
-            const positions = [
-                [config.tileWidth, config.tileHeight],
-                [config.tileWidth * 2, config.tileHeight * 2],
-                [config.tileWidth, config.tileHeight * 2],
-                [config.tileWidth * 2, config.tileHeight],
-                [config.tileWidth * 1.5, config.tileHeight * 1.5]
-            ];
-
-            positions.forEach(([x, y]) => {
-                ctx.save();
-                ctx.translate(x, y);
-                ctx.rotate(config.rotate * Math.PI / 180);
-                ctx.fillText(watermarkText, 0, 0);
-                ctx.restore();
-            });
-
-            overlay.style.backgroundImage = `url(${canvas.toDataURL('image/png')})`;
-
-            // 插入到 body 最顶部（最高层）
-            document.body.insertBefore(overlay, document.body.firstChild);
-        }
-
-        // 立即创建
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', createWatermark);
-        } else {
-            createWatermark();
-        }
-
-        window.addEventListener('load', createWatermark);
-
-        // 每 2 秒检查一次，防止被移除
-        setInterval(() => {
-            if (!document.getElementById('permanent-watermark-overlay')) {
-                createWatermark();
-            }
-        }, 2000);
-
-        // 监控 DOM 变化，强制恢复
-        const observer = new MutationObserver(() => {
-            const overlay = document.getElementById('permanent-watermark-overlay');
-            if (!overlay ||
-                overlay.style.display === 'none' ||
-                overlay.style.visibility === 'hidden' ||
-                overlay.style.opacity === '0' ||
-                !overlay.style.backgroundImage) {
-                createWatermark();
-            }
-        });
-
-        observer.observe(document.body, {
-            childList: true,
-            subtree: true,
-            attributes: true,
-            attributeFilter: ['style', 'class']
-        });
-
-    })();
-    </script>
-    {% endif %}
-    <!-- ====================== 水印结束 ====================== -->
     <!-- 导航栏 -->
     {% include 'includes/_navbar.html' %}
 
@@ -182,7 +56,6 @@
     <!-- 页脚 -->
     {% include 'includes/_footer.html' %}
 
-    <!-- 动态脚本部分（Bootstrap JS 已改为本地 + 公共 JS） -->
-    {% include 'includes/_scripts.html' %}
+
 </body>
 </html>
