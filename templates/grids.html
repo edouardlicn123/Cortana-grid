@@ -1,173 +1,211 @@
-{# templates/grids.html #}
-{# 网格管理页面 - 丰富版：移除查看按钮，编辑模态框支持负责人多选授权 #}
-
+<!-- templates/grids.html -->
 {% extends "base.html" %}
 {% block title %}网格管理{% endblock %}
 
+{% block page_styles %}
+<style>
+    /* 与 buildings.html 完全一致的顶部 padding */
+    .content-wrapper {
+        padding-top: 90px;
+    }
+    @media (max-width: 768px) {
+        .content-wrapper {
+            padding-top: 80px;
+        }
+    }
+
+    .table th, .table td {
+        vertical-align: middle;
+    }
+    .btn-sm i {
+        font-size: 0.9rem;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container my-5">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 class="mb-0">网格管理</h3>
-        {% if current_user.has_permission('resource:grid:edit') %}
-        <button class="btn btn-success btn-lg" data-bs-toggle="modal" data-bs-target="#addModal">
-            <i class="bi bi-plus-circle me-2"></i>新增网格
-        </button>
-        {% endif %}
-    </div>
+<!-- 统一的 wrapper -->
+<div class="content-wrapper">
+    <div class="row justify-content-center">
+        <div class="col-lg-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="m-0 font-weight-bold text-primary">
+                        <i class="bi bi-grid-3x3-gap me-2"></i>网格管理
+                    </h5>
+                    <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addModal">
+                        <i class="bi bi-plus-lg me-1"></i>新增网格
+                    </button>
+                </div>
 
-    <div class="card shadow-sm">
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th>网格名称</th>
-                            <th>负责人</th>
-                            <th>状态</th>
-                            <th class="text-end">操作</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% if grids %}
-                            {% for g in grids %}
-                            {% set is_virtual = g.name.startswith('虚拟网格') %}
-                            {% set is_disabled = g.is_deleted == 1 %}
-                            <tr {% if is_disabled %}class="table-secondary"{% endif %}>
-                                <td>
-                                    <strong>{{ g.name }}</strong>
-                                    {% if is_disabled %}<span class="text-muted small ms-2">(已禁用)</span>{% endif %}
-                                </td>
-                                <td>
-                                    {% if g.managers %}
-                                        {{ g.managers | join('、') }}
-                                    {% elif is_virtual %}
-                                        <em class="text-muted">系统内置</em>
-                                    {% else %}
-                                        <em class="text-muted">无</em>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if is_disabled %}
-                                        <span class="badge bg-danger">已禁用</span>
-                                    {% else %}
-                                        <span class="badge bg-success">正常</span>
-                                    {% endif %}
-                                </td>
-                                <td class="text-end">
-                                    <!-- 已移除查看按钮 -->
-
-                                    {% if current_user.has_permission('resource:grid:edit') and not is_virtual %}
-                                        {% if not is_disabled %}
-                                        <button type="button" class="btn btn-primary btn-sm me-2"
-                                                data-bs-toggle="modal" data-bs-target="#editModal"
-                                                data-grid-id="{{ g.id }}"
-                                                data-grid-name="{{ g.name }}"
-                                                data-current-managers="{{ g.managers_ids | default('') }}">
-                                            <i class="bi bi-pencil me-1"></i>编辑
-                                        </button>
-                                        {% endif %}
-
-                                        <form method="post" action="{{ url_for('grid.toggle_status', grid_id=g.id) }}" class="d-inline"
-                                              onsubmit="return confirm('确定{{ '启用' if is_disabled else '禁用' }}网格「{{ g.name }}」吗？');">
-                                            <button type="submit" class="btn btn-{{ 'success' if is_disabled else 'warning' }} btn-sm">
-                                                <i class="bi bi-{{ 'play-circle' if is_disabled else 'pause-circle' }} me-1"></i>
-                                                {{ '启用' if is_disabled else '禁用' }}
-                                            </button>
-                                        </form>
-                                    {% elif is_virtual %}
-                                        <span class="text-muted small">系统内置</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
+                <div class="card-body">
+                    <!-- Flash 消息 -->
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show mb-3" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
                             {% endfor %}
-                        {% else %}
-                            <tr>
-                                <td colspan="4" class="text-center py-5 text-muted">暂无网格数据</td>
-                            </tr>
                         {% endif %}
-                    </tbody>
-                </table>
+                    {% endwith %}
+
+                    <div class="table-responsive">
+                        <table class="table table-hover table-bordered align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="5%">#</th>
+                                    <th width="35%">网格名称</th>
+                                    <th width="30%">负责人</th>
+                                    <th width="10%">状态</th>
+                                    <th width="20%" class="text-center">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if grids %}
+                                    {% for g in grids %}
+                                    {% set is_virtual = g.name.startswith('虚拟网格') %}
+                                    {% set is_disabled = g.is_deleted == 1 %}
+                                    <tr {% if is_disabled %}class="table-secondary"{% endif %}>
+                                        <td>{{ loop.index }}</td>
+                                        <td>
+                                            <strong>{{ g.name }}</strong>
+                                            {% if is_disabled %}
+                                                <small class="text-muted ms-2">(已禁用)</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if g.managers %}
+                                                {{ g.managers | join('、') }}
+                                            {% elif is_virtual %}
+                                                <em class="text-muted">系统内置</em>
+                                            {% else %}
+                                                <em class="text-muted">无</em>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if is_disabled %}
+                                                <span class="badge bg-danger">已禁用</span>
+                                            {% else %}
+                                                <span class="badge bg-success">正常</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center">
+                                            {% if not is_virtual %}
+                                                {% if not is_disabled %}
+                                                <button type="button" class="btn btn-warning btn-sm me-1"
+                                                        data-bs-toggle="modal" data-bs-target="#editModal"
+                                                        data-grid-id="{{ g.id }}"
+                                                        data-grid-name="{{ g.name }}"
+                                                        data-current-managers="{{ g.managers_ids | default('') }}">
+                                                    <i class="bi bi-pencil"></i>
+                                                </button>
+                                                {% endif %}
+
+                                                <form method="post" action="{{ url_for('grid.toggle_status', grid_id=g.id) }}" class="d-inline"
+                                                      onsubmit="return confirm('确定{{ '启用' if is_disabled else '禁用' }}网格「{{ g.name }}」吗？');">
+                                                    <button type="submit" class="btn btn-{{ 'success' if is_disabled else 'danger' }} btn-sm">
+                                                        <i class="bi bi-{{ 'play-circle' if is_disabled else 'pause-circle' }}"></i>
+                                                        {{ '启用' if is_disabled else '禁用' }}
+                                                    </button>
+                                                </form>
+                                            {% else %}
+                                                <span class="text-muted small">系统内置，不可操作</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted py-4">
+                                            <i class="bi bi-inbox fs-1 d-block mb-3"></i>
+                                            暂无网格记录，请点击右上角“新增网格”添加
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-
-    <!-- 新增模态框（不变） -->
-    {% if current_user.has_permission('resource:grid:edit') %}
-    <div class="modal fade" id="addModal" tabindex="-1">
-        <div class="modal-dialog">
-            <form method="post" action="{{ url_for('grid.add') }}">
-                <div class="modal-content">
-                    <div class="modal-header bg-success text-white">
-                        <h5 class="modal-title">新增网格</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label class="form-label">网格名称 <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" name="name" required maxlength="50">
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                        <button type="submit" class="btn btn-success">保存</button>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- 编辑模态框（升级版：支持负责人多选） -->
-    {% if current_user.has_permission('resource:grid:edit') %}
-    <div class="modal fade" id="editModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <form method="post" id="editForm">
-                <div class="modal-content">
-                    <div class="modal-header bg-primary text-white">
-                        <h5 class="modal-title">编辑网格</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <input type="hidden" name="grid_id" id="edit_grid_id">
-
-                        <div class="mb-4">
-                            <label class="form-label fw-bold">网格名称 <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control form-control-lg" id="edit_grid_name" name="name" required maxlength="50">
-                        </div>
-
-                        <hr>
-
-                        <h5 class="mb-3">负责人授权（可多选）</h5>
-                        <div class="row">
-                            {% for user in all_users %}
-                            <div class="col-md-6 col-lg-4 mb-3">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="manager_ids" value="{{ user.id }}"
-                                           id="user_{{ user.id }}">
-                                    <label class="form-check-label" for="user_{{ user.id }}">
-                                        {{ user.full_name or user.username }} <small class="text-muted">({{ user.username }})</small>
-                                    </label>
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-
-                        {% if not all_users %}
-                        <h5 class="mb-3">负责人授权（可多选）<span class="text-muted small ms-2">(共 {{ all_users|length }} 人)</span></h5>
-                        <p class="text-muted">暂无用户可分配</p>
-                        {% endif %}
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                        <button type="submit" class="btn btn-primary btn-lg">保存更改</button>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
-    {% endif %}
 </div>
 
+<!-- 新增模态框（保持原有） -->
+<div class="modal fade" id="addModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form method="post" action="{{ url_for('grid.add') }}">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">新增网格</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">网格名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="name" required maxlength="50">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-success">保存</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 编辑模态框（保持原有负责人多选） -->
+<div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <form method="post" id="editForm">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title">编辑网格</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="grid_id" id="edit_grid_id">
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">网格名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-lg" id="edit_grid_name" name="name" required maxlength="50">
+                    </div>
+
+                    <hr>
+
+                    <h5 class="mb-3">负责人授权（可多选）</h5>
+                    <div class="row">
+                        {% for user in all_users %}
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="manager_ids" value="{{ user.id }}"
+                                       id="user_{{ user.id }}">
+                                <label class="form-check-label" for="user_{{ user.id }}">
+                                    {{ user.full_name or user.username }} <small class="text-muted">({{ user.username }})</small>
+                                </label>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    {% if not all_users %}
+                    <p class="text-muted">暂无用户可分配</p>
+                    {% endif %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-warning btn-lg">保存更改</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const editModal = document.getElementById('editModal');
@@ -180,16 +218,11 @@ document.addEventListener('DOMContentLoaded', function () {
             const gridName = button.getAttribute('data-grid-name');
             const currentManagers = button.getAttribute('data-current-managers') || '';
 
-            // 填充基本信息
             document.getElementById('edit_grid_id').value = gridId;
             document.getElementById('edit_grid_name').value = gridName;
 
-            // 重置所有复选框
-            document.querySelectorAll('input[name="manager_ids"]').forEach(cb => {
-                cb.checked = false;
-            });
+            document.querySelectorAll('input[name="manager_ids"]').forEach(cb => cb.checked = false);
 
-            // 勾选当前负责人
             if (currentManagers) {
                 const managerIds = currentManagers.split(',');
                 managerIds.forEach(id => {
@@ -198,7 +231,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
             }
 
-            // 设置表单 action
             editForm.action = '{{ url_for("grid.edit", grid_id=0) }}'.replace('/0', '/' + gridId);
         });
     }
