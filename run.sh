@@ -3,6 +3,11 @@
 
 set -e  # 脚本出错立即退出（关键安全）
 
+if [ -z "$SECRET_KEY" ]; then
+    export SECRET_KEY=$(python3 -c 'import secrets; print(secrets.token_hex(32))')
+    echo "生成的 SECRET_KEY: $SECRET_KEY"  # 记录到安全位置，勿泄露！
+fi
+
 # ==================== 颜色定义 ====================
 RED='\033[0;31m'
 GREEN='\033[1;32m'
@@ -94,8 +99,8 @@ if [ "$DATABASE_TYPE" = "mysql" ]; then
 fi
 
 # ==================== 清理缓存 ====================
-echo -e "${YELLOW}正在清理缓存...${NC}"
-"$PYTHON" clear_cache.py -f || echo -e "${YELLOW}警告：clear_cache.py 执行失败（可能不存在）${NC}"
+#echo -e "${YELLOW}正在清理缓存...${NC}"
+#"$PYTHON" clear_cache.py -f || echo -e "${YELLOW}警告：clear_cache.py 执行失败（可能不存在）${NC}"
 
 # ==================== 启动应用 ====================
 echo -e "${GREEN}正在启动 Cortana Grid Web 服务...${NC}"

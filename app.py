@@ -9,9 +9,9 @@ from flask_login import LoginManager, current_user
 from datetime import datetime
 
 # ============ 统一的日志配置（只保留这一段！） ============
-logging.basicConfig(level=logging.DEBUG)  # 强制显示所有级别日志
+logging.basicConfig(level=logging.WARNING)  # 基础日志
 logger = logging.getLogger('cortana_grid')
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.WARNING)  #日志等级
 
 # 添加控制台处理器，确保在终端看到所有日志
 handler = logging.StreamHandler()
@@ -49,7 +49,11 @@ logger.info(f"imports_folder: {IMPORTS_FOLDER}")
 logger.info(f"exports_folder: {EXPORTS_FOLDER}")
 
 # ====================== 配置 ======================
-app.config['SECRET_KEY'] = 'your-super-secret-key-change-in-production'
+secret_key = os.environ.get('SECRET_KEY')
+if not secret_key:
+    raise ValueError("错误：未设置环境变量 SECRET_KEY！请在运行前设置强随机密钥。")
+
+app.config['SECRET_KEY'] = secret_key
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
