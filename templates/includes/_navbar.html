@@ -31,7 +31,7 @@
                         <ul class="dropdown-menu">
                             {% if current_user.has_permission('resource:person:view') %}
                                 <li><a class="dropdown-item" href="{{ url_for('person.index') }}">
-                                    <i class="bi bi-person me-2"></i>人员管理</a></li>
+                                    <i class="bi bi-people me-2"></i>人员管理</a></li>
                             {% endif %}
 
                             {% if current_user.has_permission('resource:building:view') %}

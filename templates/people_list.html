@@ -1,4 +1,4 @@
-<!-- templates/people.html -->
+<!-- templates/people_list.html -->
 {% extends "base.html" %}
 {% block title %}人员管理{% endblock %}
 
@@ -14,6 +14,13 @@
     }
     .table th, .table td {
         vertical-align: middle;
+    }
+    .filter-form {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        border: 1px solid #dee2e6;
     }
 </style>
 {% endblock %}
@@ -31,7 +38,9 @@
                         <i class="bi bi-person-plus me-1"></i>新增人员
                     </a>
                 </div>
+
                 <div class="card-body">
+                    <!-- Flash 消息 -->
                     {% with messages = get_flashed_messages(with_categories=true) %}
                         {% if messages %}
                             {% for category, message in messages %}
@@ -43,6 +52,55 @@
                         {% endif %}
                     {% endwith %}
 
+                    <!-- 新增：过滤表单 -->
+                    <div class="filter-form">
+                        <form method="GET" class="row g-3 align-items-end">
+                            <div class="col-md-3 col-sm-6">
+                                <label class="form-label">姓名</label>
+                                <input type="text" name="name" class="form-control" value="{{ request.args.get('name', '') }}" placeholder="模糊搜索">
+                            </div>
+                            <div class="col-md-3 col-sm-6">
+                                <label class="form-label">身份证号</label>
+                                <input type="text" name="id_card" class="form-control" value="{{ request.args.get('id_card', '') }}" placeholder="模糊搜索">
+                            </div>
+                            <div class="col-md-3 col-sm-6">
+                                <label class="form-label">现住小区/建筑</label>
+                                <input type="text" name="building" class="form-control" value="{{ request.args.get('building', '') }}" placeholder="模糊搜索">
+                            </div>
+                            <div class="col-md-3 col-sm-6">
+                                <label class="form-label">联系电话</label>
+                                <input type="text" name="phone" class="form-control" value="{{ request.args.get('phone', '') }}" placeholder="模糊搜索">
+                            </div>
+
+                            <div class="col-md-3 col-sm-6">
+                                <label class="form-label">人员类型</label>
+                                <select name="person_type" class="form-select">
+                                    <option value="">不限</option>
+                                    <option value="常住人口" {% if request.args.get('person_type') == '常住人口' %}selected{% endif %}>常住人口</option>
+                                    <option value="流动人口" {% if request.args.get('person_type') == '流动人口' %}selected{% endif %}>流动人口</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3 col-sm-6">
+                                <label class="form-label">户籍详细地址</label>
+                                <input type="text" name="household_address" class="form-control" value="{{ request.args.get('household_address', '') }}" placeholder="模糊搜索">
+                            </div>
+                            <div class="col-md-3 col-sm-6">
+                                <label class="form-label">户编号</label>
+                                <input type="text" name="family_id" class="form-control" value="{{ request.args.get('family_id', '') }}" placeholder="精确或模糊">
+                            </div>
+
+                            <div class="col-md-3 col-sm-12 text-end">
+                                <button type="submit" class="btn btn-primary me-2">
+                                    <i class="bi bi-search me-1"></i>搜索
+                                </button>
+                                <a href="{{ url_for('person.index') }}" class="btn btn-secondary">
+                                    <i class="bi bi-arrow-clockwise me-1"></i>重置
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- 人员表格 -->
                     <div class="table-responsive">
                         <table class="table table-hover table-bordered align-middle">
                             <thead class="table-light">
@@ -61,8 +119,8 @@
                                     <tr>
                                         <td>{{ loop.index + (current_page - 1) * 20 }}</td>
                                         <td><strong>{{ p.name }}</strong></td>
-                                        <td>{{ p.id_card }}</td>
-                                        <td>{{ p.phone or '未填写' }}</td>
+                                        <td>{{ p.id_card or '未填写' }}</td>
+                                        <td>{{ p.phones or '未填写' }}</td>
                                         <td>
                                             {% if p.living_building_name %}
                                                 {{ p.living_building_name }} 
@@ -72,18 +130,14 @@
                                             {% endif %}
                                         </td>
                                         <td class="text-center">
-                                            <a href="{{ url_for('person.view', pid=p.id) }}" 
-                                               class="btn btn-info btn-sm me-1" title="查看详情">
+                                            <a href="{{ url_for('person.view', pid=p.id) }}" class="btn btn-info btn-sm me-1" title="查看详情">
                                                 <i class="bi bi-eye"></i>
                                             </a>
-                                            <a href="{{ url_for('person.edit', pid=p.id) }}" 
-                                               class="btn btn-warning btn-sm me-1" title="编辑">
+                                            <a href="{{ url_for('person.edit', pid=p.id) }}" class="btn btn-warning btn-sm me-1" title="编辑">
                                                 <i class="bi bi-pencil"></i>
                                             </a>
                                             <form action="{{ url_for('person.delete', pid=p.id) }}" method="POST" class="d-inline">
-                                                <button type="submit" 
-                                                        class="btn btn-danger btn-sm" 
-                                                        title="删除"
+                                                <button type="submit" class="btn btn-danger btn-sm" title="删除"
                                                         onclick="return confirm('确定要删除「{{ p.name }}」吗？此操作将软删除该人员，且不可恢复！')">
                                                     <i class="bi bi-trash"></i>
                                                 </button>
@@ -95,7 +149,11 @@
                                     <tr>
                                         <td colspan="6" class="text-center text-muted py-4">
                                             <i class="bi bi-inbox fs-1 d-block mb-3"></i>
-                                            暂无人员记录，请点击右上角“新增人员”添加
+                                            {% if request.args|length > 0 %}
+                                                未找到匹配的人员记录
+                                            {% else %}
+                                                暂无人员记录，请点击右上角“新增人员”添加
+                                            {% endif %}
                                         </td>
                                     </tr>
                                 {% endif %}
@@ -103,20 +161,20 @@
                         </table>
                     </div>
 
-                    <!-- 分页导航 -->
+                    <!-- 分页导航（保持原有逻辑） -->
                     {% if total_pages > 1 %}
                     <nav aria-label="人员分页">
                         <ul class="pagination justify-content-center mt-4">
                             <li class="page-item {% if current_page == 1 %}disabled{% endif %}">
-                                <a class="page-link" href="{{ url_for('person.index', page=current_page-1) }}">上一页</a>
+                                <a class="page-link" href="{{ url_for('person.index', page=current_page-1, **request.args) }}">上一页</a>
                             </li>
                             {% for p in range(1, total_pages + 1) %}
                             <li class="page-item {% if p == current_page %}active{% endif %}">
-                                <a class="page-link" href="{{ url_for('person.index', page=p) }}">{{ p }}</a>
+                                <a class="page-link" href="{{ url_for('person.index', page=p, **request.args) }}">{{ p }}</a>
                             </li>
                             {% endfor %}
                             <li class="page-item {% if current_page == total_pages %}disabled{% endif %}">
-                                <a class="page-link" href="{{ url_for('person.index', page=current_page+1) }}">下一页</a>
+                                <a class="page-link" href="{{ url_for('person.index', page=current_page+1, **request.args) }}">下一页</a>
                             </li>
                         </ul>
                         <p class="text-center text-muted mt-2">共 {{ total }} 条记录，第 {{ current_page }} / {{ total_pages }} 页</p>

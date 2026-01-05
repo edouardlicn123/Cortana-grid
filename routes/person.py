@@ -1,5 +1,5 @@
 # routes/person.py
-# 人员管理专用蓝图（完整终极版 - 所有字段完整回显 + 分页 + 查看 + 友好下拉）
+# 人员管理专用蓝图（完整终极版 - 支持高级过滤搜索 + 分页 + 查看 + 友好下拉）
 
 import time
 from flask import Blueprint, render_template, request, redirect, url_for, flash
@@ -18,11 +18,11 @@ from utils import logger
 person_bp = Blueprint(
     'person',
     __name__,
-    url_prefix='/persons',
+    url_prefix='/people',           # 已改为 /people
     template_folder='../templates'
 )
 
-# ========================== 列表页（带分页） ==========================
+# ========================== 列表页（支持过滤搜索 + 分页） ==========================
 @person_bp.route('/', methods=['GET'])
 @login_required
 @permission_required('resource:person:view')
@@ -30,16 +30,46 @@ def index():
     page = request.args.get('page', 1, type=int)
     per_page = 20
 
-    all_persons = get_all_persons()
-    total = len(all_persons)
-    total_pages = (total + per_page - 1) // per_page if total > 0 else 1
+    # 获取所有过滤参数（支持模糊搜索）
+    name = request.args.get('name', '').strip()
+    id_card = request.args.get('id_card', '').strip()
+    building = request.args.get('building', '').strip()          # 现住小区/建筑名称模糊
+    phone = request.args.get('phone', '').strip()
+    person_type = request.args.get('person_type', '').strip()    # 精确匹配：常住人口 / 流动人口 / ''（不限）
+    household_address = request.args.get('household_address', '').strip()
+    family_id = request.args.get('family_id', '').strip()
 
+    # 获取全量数据
+    all_persons = get_all_persons()
+
+    # 客户端过滤（数据量不大，性能完全足够）
+    filtered_persons = []
+    for p in all_persons:
+        if name and name.lower() not in p.get('name', '').lower():
+            continue
+        if id_card and id_card not in p.get('id_card', ''):
+            continue
+        if building and building.lower() not in p.get('living_building_name', '').lower():
+            continue
+        if phone and phone not in p.get('phones', ''):
+            continue
+        if person_type and p.get('person_type') != person_type:
+            continue
+        if household_address and household_address.lower() not in p.get('household_address', '').lower():
+            continue
+        if family_id and family_id not in p.get('family_id', ''):
+            continue
+        filtered_persons.append(p)
+
+    # 计算分页
+    total = len(filtered_persons)
+    total_pages = (total + per_page - 1) // per_page if total > 0 else 1
     start = (page - 1) * per_page
     end = start + per_page
-    persons = all_persons[start:end]
+    persons = filtered_persons[start:end]
 
     return render_template(
-        'people.html',
+        'people_list.html',
         persons=persons,
         total_pages=total_pages,
         current_page=page,
@@ -54,7 +84,6 @@ def add():
     buildings = get_buildings_for_select()
 
     if request.method == 'POST':
-        # 收集所有表单字段，用于失败时完整回显
         person_data = {
             'name': request.form.get('name', '').strip(),
             'id_card': request.form.get('id_card', '').strip(),
@@ -89,7 +118,6 @@ def add():
             'has_other_id': 'has_other_id' in request.form,
         }
 
-        # 必填验证
         errors = []
         if not person_data['name']:
             errors.append('姓名不能为空')
@@ -161,8 +189,7 @@ def edit(pid):
     buildings = get_buildings_for_select()
 
     if request.method == 'POST':
-        # 收集表单数据，用于回显
-        person_data = person.copy()  # 从原记录开始
+        person_data = person.copy()
         person_data.update({
             'name': request.form.get('name', '').strip(),
             'id_card': request.form.get('id_card', '').strip(),
@@ -179,7 +206,7 @@ def edit(pid):
             'is_separated': 'is_separated' in request.form,
             'current_residence': request.form.get('current_residence', '').strip(),
             'is_migrated_out': 'is_migrated_out' in request.form,
-            'household_exit_date': request.form('household_exit_date', '').strip(),
+            'household_exit_date': request.form.get('household_exit_date', '').strip(),
             'migration_destination': request.form.get('migration_destination', '').strip(),
             'is_deceased': 'is_deceased' in request.form,
             'death_date': request.form.get('death_date', '').strip(),
@@ -197,7 +224,6 @@ def edit(pid):
             'has_other_id': 'has_other_id' in request.form,
         })
 
-        # 必填验证
         errors = []
         if not person_data['name']:
             errors.append('姓名不能为空')
