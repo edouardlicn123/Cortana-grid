@@ -1,5 +1,6 @@
 # repositories/person_repo.py
 # 人员数据访问层（完整终极版 - 支持列表、详情、CRUD、统计、首页概览、导出 + 批量插入）
+# 2026-01-05 修复：参数名统一为 phones，新增 address_detail 必填字段
 
 from .base import get_db_connection
 from utils import logger
@@ -53,27 +54,82 @@ def get_person_by_id(pid: int):
         return None
 
 
-def create_person(name: str, id_card: str, phone: str = None, living_building_id: int = None, **kwargs) -> int:
+def create_person(
+    name: str,
+    id_card: str,
+    phones: str = None,
+    gender: str = None,
+    birth_date: str = None,
+    person_type: str = '常住人口',
+    living_building_id: int = None,
+    address_detail: str = None,                # ← 新增必填字段
+    household_building_id: int = None,
+    household_address: str = None,
+    family_id: str = None,
+    household_entry_date: str = None,
+    is_separated: bool = False,
+    current_residence: str = None,
+    is_migrated_out: bool = False,
+    household_exit_date: str = None,
+    migration_destination: str = None,
+    is_deceased: bool = False,
+    death_date: str = None,
+    nationality: str = None,
+    political_status: str = None,
+    marital_status: str = None,
+    education: str = None,
+    work_study: str = None,
+    health: str = None,
+    notes: str = None,
+    is_key_person: bool = False,
+    key_categories: str = None,
+    other_id_type: str = None,
+    passport: str = None
+) -> int:
     """新增单个人员，返回新 ID"""
     try:
         with get_db_connection() as conn:
-            base_fields = ['name', 'id_card', 'phone', 'living_building_id', 'is_deleted']
-            base_values = [name, id_card, phone, living_building_id, 0]
+            # 基础必填字段
+            fields = ['name', 'id_card', 'phones', 'gender', 'birth_date', 'person_type',
+                      'living_building_id', 'address_detail', 'is_deleted']
+            values = [name, id_card, phones, gender, birth_date, person_type,
+                      living_building_id, address_detail, 0]
 
-            extra_fields = []
-            extra_values = []
-            for key, value in kwargs.items():
+            # 可选字段（有值才加入）
+            optional_pairs = [
+                ('household_building_id', household_building_id),
+                ('household_address', household_address),
+                ('family_id', family_id),
+                ('household_entry_date', household_entry_date),
+                ('is_separated', 1 if is_separated else 0),
+                ('current_residence', current_residence),
+                ('is_migrated_out', 1 if is_migrated_out else 0),
+                ('household_exit_date', household_exit_date),
+                ('migration_destination', migration_destination),
+                ('is_deceased', 1 if is_deceased else 0),
+                ('death_date', death_date),
+                ('nationality', nationality),
+                ('political_status', political_status),
+                ('marital_status', marital_status),
+                ('education', education),
+                ('work_study', work_study),
+                ('health', health),
+                ('notes', notes),
+                ('is_key_person', 1 if is_key_person else 0),
+                ('key_categories', key_categories),
+                ('other_id_type', other_id_type),
+                ('passport', passport),
+            ]
+
+            for field, value in optional_pairs:
                 if value is not None:
-                    extra_fields.append(key)
-                    extra_values.append(value)
+                    fields.append(field)
+                    values.append(value)
 
-            fields = base_fields + extra_fields
-            field_names = ', '.join(fields)
             placeholders = ', '.join(['?' for _ in fields])
-
             cursor = conn.execute(
-                f"INSERT INTO person ({field_names}) VALUES ({placeholders})",
-                base_values + extra_values
+                f"INSERT INTO person ({', '.join(fields)}) VALUES ({placeholders})",
+                values
             )
             conn.commit()
 
@@ -94,25 +150,26 @@ def bulk_insert_people(people_data: list[dict]) -> tuple[int, list[str]]:
         with get_db_connection() as conn:
             for idx, data in enumerate(people_data, start=1):
                 try:
-                    # 基础必填字段
                     name = data.get('name')
                     id_card = data.get('id_card')
                     if not name or not id_card:
                         errors.append(f"第 {idx} 行: 姓名或身份证号为空")
                         continue
 
-                    # 可选字段
-                    phone = data.get('phone')
+                    phones = data.get('phones') or data.get('phone')
                     living_building_id = data.get('living_building_id')
+                    address_detail = data.get('address_detail') or data.get('address')
 
-                    # 其他扩展字段直接传入 kwargs
-                    extra_kwargs = {k: v for k, v in data.items() if k not in {'name', 'id_card', 'phone', 'living_building_id'}}
+                    extra_kwargs = {k: v for k, v in data.items()
+                                    if k not in {'name', 'id_card', 'phones', 'phone',
+                                                 'living_building_id', 'address_detail', 'address'}}
 
                     create_person(
                         name=name,
                         id_card=id_card,
-                        phone=phone,
+                        phones=phones,
                         living_building_id=living_building_id,
+                        address_detail=address_detail,
                         **extra_kwargs
                     )
                     success_count += 1
@@ -120,7 +177,7 @@ def bulk_insert_people(people_data: list[dict]) -> tuple[int, list[str]]:
                 except Exception as row_e:
                     errors.append(f"第 {idx} 行: {str(row_e)}")
 
-            conn.commit()  # 所有成功后统一提交
+            conn.commit()
 
         logger.info(f"批量插入人员完成: 成功 {success_count} 条, 失败 {len(errors)} 条")
         return success_count, errors
@@ -130,34 +187,83 @@ def bulk_insert_people(people_data: list[dict]) -> tuple[int, list[str]]:
         return success_count, [f"系统错误: {str(e)}"] + errors
 
 
-def update_person(pid: int, name: str = None, id_card: str = None, phone: str = None,
-                  living_building_id: int = None, **kwargs) -> bool:
+def update_person(pid: int,
+                  name: str = None,
+                  id_card: str = None,
+                  phones: str = None,                     # ← 统一为 phones
+                  gender: str = None,
+                  birth_date: str = None,
+                  person_type: str = None,
+                  living_building_id: int = None,
+                  address_detail: str = None,
+                  household_building_id: int = None,
+                  household_address: str = None,
+                  family_id: str = None,
+                  household_entry_date: str = None,
+                  is_separated: bool = None,
+                  current_residence: str = None,
+                  is_migrated_out: bool = None,
+                  household_exit_date: str = None,
+                  migration_destination: str = None,
+                  is_deceased: bool = None,
+                  death_date: str = None,
+                  nationality: str = None,
+                  political_status: str = None,
+                  marital_status: str = None,
+                  education: str = None,
+                  work_study: str = None,
+                  health: str = None,
+                  notes: str = None,
+                  is_key_person: bool = None,
+                  key_categories: str = None,
+                  other_id_type: str = None,
+                  passport: str = None) -> bool:
     """更新人员信息"""
     try:
         with get_db_connection() as conn:
             updates = []
             values = []
 
-            if name is not None:
-                updates.append("name = ?")
-                values.append(name)
-            if id_card is not None:
-                updates.append("id_card = ?")
-                values.append(id_card)
-            if phone is not None:
-                updates.append("phone = ?")
-                values.append(phone)
-            if living_building_id is not None:
-                updates.append("living_building_id = ?")
-                values.append(living_building_id)
+            optional_params = [
+                ('name', name),
+                ('id_card', id_card),
+                ('phones', phones),
+                ('gender', gender),
+                ('birth_date', birth_date),
+                ('person_type', person_type),
+                ('living_building_id', living_building_id),
+                ('address_detail', address_detail),
+                ('household_building_id', household_building_id),
+                ('household_address', household_address),
+                ('family_id', family_id),
+                ('household_entry_date', household_entry_date),
+                ('is_separated', 1 if is_separated else 0 if is_separated is not None else None),
+                ('current_residence', current_residence),
+                ('is_migrated_out', 1 if is_migrated_out else 0 if is_migrated_out is not None else None),
+                ('household_exit_date', household_exit_date),
+                ('migration_destination', migration_destination),
+                ('is_deceased', 1 if is_deceased else 0 if is_deceased is not None else None),
+                ('death_date', death_date),
+                ('nationality', nationality),
+                ('political_status', political_status),
+                ('marital_status', marital_status),
+                ('education', education),
+                ('work_study', work_study),
+                ('health', health),
+                ('notes', notes),
+                ('is_key_person', 1 if is_key_person else 0 if is_key_person is not None else None),
+                ('key_categories', key_categories),
+                ('other_id_type', other_id_type),
+                ('passport', passport),
+            ]
 
-            for key, value in kwargs.items():
+            for field, value in optional_params:
                 if value is not None:
-                    updates.append(f"{key} = ?")
+                    updates.append(f"{field} = ?")
                     values.append(value)
 
             if not updates:
-                return True
+                return True  # 无需更新
 
             set_clause = ', '.join(updates)
             values.append(pid)

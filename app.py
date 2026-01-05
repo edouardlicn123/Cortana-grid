@@ -178,4 +178,10 @@ def index():
 
 # ====================== 启动 ======================
 if __name__ == '__main__':
+    # 关闭 Flask/Werkzeug 的静态文件访问日志
+    import logging
+    log = logging.getLogger('werkzeug')
+    log.setLevel(logging.WARNING)   # 日志级别
+    # log.disabled = True         # 日志完全禁用
+
     app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=True)

@@ -30,7 +30,7 @@ class User(UserMixin):
         if hasattr(self, '_permissions_loaded') and self._permissions_loaded:
             return
 
-        logger.info(f"开始加载用户 {self.username} (ID: {self.id}) 的权限和角色...")
+        logger.debug(f"开始加载用户 {self.username} (ID: {self.id}) 的权限和角色...")
 
         try:
             with get_db_connection() as conn:
@@ -41,7 +41,7 @@ class User(UserMixin):
                     WHERE ur.user_id = ?
                 ''', (self.id,)).fetchall()
                 self.roles = [row['name'] for row in roles_rows]
-                logger.info(f"加载到角色: {self.roles}")
+                logger.debug(f"加载到角色: {self.roles}")
 
                 # 加载权限（数据库配置优先）
                 perms_rows = conn.execute('''
@@ -50,7 +50,7 @@ class User(UserMixin):
                     WHERE ur.user_id = ?
                 ''', (self.id,)).fetchall()
                 db_permissions = {row['permission'] for row in perms_rows}
-                logger.info(f"从数据库加载权限: {db_permissions}")
+                logger.debug(f"从数据库加载权限: {db_permissions}")
 
                 # 如果数据库无权限配置，回退到硬编码默认
                 final_permissions = db_permissions
@@ -58,7 +58,7 @@ class User(UserMixin):
                     from permissions import DEFAULT_ROLE_PERMISSIONS
                     for role in self.roles:
                         final_permissions.update(DEFAULT_ROLE_PERMISSIONS.get(role, []))
-                    logger.info(f"使用硬编码默认权限: {final_permissions}")
+                    logger.debug(f"使用硬编码默认权限: {final_permissions}")
 
                 self.permissions = final_permissions
 
@@ -69,10 +69,10 @@ class User(UserMixin):
                     WHERE ug.user_id = ?
                 ''', (self.id,)).fetchall()
                 self.managed_grids = [row['id'] for row in grids_rows]
-                logger.info(f"加载负责网格: {self.managed_grids}")
+                logger.debug(f"加载负责网格: {self.managed_grids}")
 
             self._permissions_loaded = True
-            logger.info(f"用户 {self.username} 权限加载完成")
+            logger.debug(f"用户 {self.username} 权限加载完成")
         except Exception as e:
             logger.error(f"用户 {self.username} 权限加载异常: {e}")
             self.roles = ['super_admin']  # 保险：强制给 super_admin 权限
