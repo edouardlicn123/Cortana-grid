@@ -210,3 +210,7 @@ __marimo__/
 downloads/*
 !downloads/.gitkeep
 code2ai/*
+
+#xls temp file
+~lock*
+*~lock
