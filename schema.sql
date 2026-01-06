@@ -1,5 +1,5 @@
 -- schema.sql
--- 社区网格化人口管理系统数据库结构（v2.0 最终版 - 完整恢复旧版丰富字段）
+-- 社区网格化人口管理系统数据库结构（v2.0 最终版 - 完整恢复旧版丰富字段 + 补回户编号）
 
 -- 用户表
 CREATE TABLE IF NOT EXISTS user (
@@ -86,7 +86,7 @@ CREATE TABLE IF NOT EXISTS building (
     UNIQUE (name, grid_id)
 );
 
--- 人员表（恢复旧版全部丰富字段 + 新增 other_id_type）
+-- 人员表（恢复旧版全部丰富字段 + 新增 other_id_type + 补回 household_number）
 CREATE TABLE IF NOT EXISTS person (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     unique_id TEXT UNIQUE,
@@ -114,6 +114,7 @@ CREATE TABLE IF NOT EXISTS person (
     household_building_id INTEGER,
     household_address TEXT,
     family_id TEXT,
+    household_number TEXT,             -- 补回：户编号（关键字段）
     household_entry_date TEXT,
     is_migrated_out INTEGER DEFAULT 0,
     household_exit_date TEXT,
@@ -147,6 +148,7 @@ CREATE TABLE IF NOT EXISTS settings (
 CREATE INDEX IF NOT EXISTS idx_person_name ON person (name);
 CREATE INDEX IF NOT EXISTS idx_person_id_card ON person (id_card);
 CREATE INDEX IF NOT EXISTS idx_person_family_id ON person (family_id);
+CREATE INDEX IF NOT EXISTS idx_person_household_number ON person (household_number);  -- 新增索引
 CREATE INDEX IF NOT EXISTS idx_person_living_building_id ON person (living_building_id);
 CREATE INDEX IF NOT EXISTS idx_person_household_building_id ON person (household_building_id);
 CREATE INDEX IF NOT EXISTS idx_building_grid_id ON building (grid_id);

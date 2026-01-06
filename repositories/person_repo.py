@@ -1,6 +1,6 @@
 # repositories/person_repo.py
 # 人员数据访问层（优化终极版 - 功能完全不变，代码更健壮、可读、专业）
-# 2026-01-06 优化：类型注解、SQL 安全、日志完善、结构清晰、布尔处理统一
+# 2026-01-06 更新：补回 household_number 字段支持
 
 from .base import get_db_connection
 from utils import logger
@@ -72,6 +72,7 @@ def create_person(
     household_building_id: int | None = None,
     household_address: str | None = None,
     family_id: str | None = None,
+    household_number: str | None = None,          # 补回
     household_entry_date: str | None = None,
     is_separated: bool = False,
     current_residence: str | None = None,
@@ -111,6 +112,7 @@ def create_person(
         ('household_building_id', household_building_id),
         ('household_address', household_address),
         ('family_id', family_id),
+        ('household_number', household_number),                  # 补回
         ('household_entry_date', household_entry_date),
         ('is_separated', 1 if is_separated else 0),
         ('current_residence', current_residence),
@@ -173,8 +175,14 @@ def bulk_insert_people(people_data: List[Dict]) -> Tuple[int, List[str]]:
                     name = data.get('name')
                     id_card = data.get('id_card')
 
-                    if not name or not id_card:
-                        errors.append(f"第 {idx} 行: 缺少姓名或身份证号")
+                    if not name:
+                        fail_reasons.append(f"第 {idx+2} 行：姓名为空")
+                        continue
+                    if not phones:
+                        fail_reasons.append(f"第 {idx+2} 行：联系电话为空（{name}）")
+                        continue
+                    if not living_building_name:
+                        fail_reasons.append(f"第 {idx+2} 行：现住小区/建筑为空（{name}）")
                         continue
 
                     # 参数兼容处理
@@ -230,6 +238,7 @@ def update_person(
     household_building_id: int | None = None,
     household_address: str | None = None,
     family_id: str | None = None,
+    household_number: str | None = None,          # 补回
     household_entry_date: str | None = None,
     is_separated: bool | None = None,
     current_residence: str | None = None,
@@ -266,6 +275,7 @@ def update_person(
         ('household_building_id', household_building_id),
         ('household_address', household_address),
         ('family_id', family_id),
+        ('household_number', household_number),               # 补回
         ('household_entry_date', household_entry_date),
         ('current_residence', current_residence),
         ('household_exit_date', household_exit_date),

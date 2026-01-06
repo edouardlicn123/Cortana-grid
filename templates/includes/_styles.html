@@ -1,6 +1,10 @@
 {# templates/includes/_styles.html #}
 {# 样式加载 - 完全本地版 + 默认必须加载 default.css #}
 
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+
 <!-- Bootstrap Icons（本地） -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap-icons.css') }}">
 

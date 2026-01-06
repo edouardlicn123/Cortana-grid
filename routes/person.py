@@ -1,8 +1,9 @@
 # routes/person.py
 # 人员管理专用蓝图（优化终极版 - 代码更简洁、可读性提升、错误处理更一致，功能完全不变）
+# 更新：彻底解决列表页面缓存问题，删除/导入/编辑后立即刷新显示最新数据
 
 import time
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, make_response
 from flask_login import login_required, current_user
 from permissions import permission_required, grid_data_permission
 from repositories.person_repo import (
@@ -30,6 +31,9 @@ person_bp = Blueprint(
 @permission_required('resource:person:view')
 def index():
     """人员列表页（支持多条件模糊/精确搜索 + 分页）"""
+    # 接收刷新参数，防止浏览器缓存
+    _ = request.args.get('_refresh')
+
     page = request.args.get('page', 1, type=int)
     per_page = 20
 
@@ -63,13 +67,21 @@ def index():
     start = (page - 1) * per_page
     persons = filtered_persons[start:start + per_page]
 
-    return render_template(
+    # 创建响应并强制禁用缓存
+    resp = make_response(render_template(
         'people_list.html',
         persons=persons,
         total_pages=total_pages,
         current_page=page,
         total=total
-    )
+    ))
+
+    # 强制浏览器不缓存页面
+    resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    resp.headers['Pragma'] = 'no-cache'
+    resp.headers['Expires'] = '0'
+
+    return resp
 
 
 # ========================== 新增人员 ==========================
@@ -93,7 +105,8 @@ def add():
             create_person(**_prepare_person_args(person_data))
             flash(f'"{person_data["name"]}" 添加成功', 'success')
             logger.info(f"用户 {current_user.username} 新增人员: {person_data['name']}")
-            return redirect(url_for('person.index', _t=int(time.time())))
+            # 使用 _refresh 参数强制刷新列表
+            return redirect(url_for('person.index', _refresh=int(time.time())))
         except Exception as e:
             logger.error(f"新增人员失败: {e}")
             flash('添加失败（数据库错误，请联系管理员查看日志）', 'error')
@@ -130,7 +143,7 @@ def edit(pid):
             update_person(pid, **_prepare_person_args(person_data))
             flash(f'"{person_data["name"]}" 修改成功', 'success')
             logger.info(f"用户 {current_user.username} 编辑人员 ID {pid}")
-            return redirect(url_for('person.index', _t=int(time.time())))
+            return redirect(url_for('person.index', _refresh=int(time.time())))
         except Exception as e:
             logger.error(f"编辑人员失败 (ID: {pid}): {e}")
             flash('修改失败（数据库错误，请联系管理员查看日志）', 'error')
@@ -167,7 +180,7 @@ def delete(pid):
     success, msg = delete_person(pid)
     flash(msg, 'success' if success else 'error')
     logger.info(f"用户 {current_user.username} {'成功' if success else '失败'}删除人员 ID {pid}")
-    return redirect(url_for('person.index', _t=int(time.time())))
+    return redirect(url_for('person.index', _refresh=int(time.time())))
 
 
 # ======================== 辅助函数 ========================
@@ -204,6 +217,7 @@ def _extract_person_data(form) -> dict:
         'key_categories': ','.join(form.getlist('key_categories')),
         'other_id_type': form.get('other_id_type'),
         'passport': form.get('passport', '').strip(),
+        'household_number': form.get('household_number', '').strip(),  # 若前端已支持
     }
 
 
@@ -252,4 +266,5 @@ def _prepare_person_args(data: dict) -> dict:
         'key_categories': data['key_categories'],
         'other_id_type': data['other_id_type'],
         'passport': data['passport'],
+        'household_number': data.get('household_number'),  # 支持户编号
     }
