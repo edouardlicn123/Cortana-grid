@@ -2,28 +2,8 @@
 {% extends "base.html" %}
 {% block title %}人员管理{% endblock %}
 
-{% block page_styles %}
-<style>
-    .content-wrapper {
-        padding-top: 90px;
-    }
-    @media (max-width: 768px) {
-        .content-wrapper {
-            padding-top: 80px;
-        }
-    }
-    .table th, .table td {
-        vertical-align: middle;
-    }
-    .filter-form {
-        background: #f8f9fa;
-        border-radius: 8px;
-        padding: 20px;
-        margin-bottom: 20px;
-        border: 1px solid #dee2e6;
-    }
-</style>
-{% endblock %}
+<!-- 插入通用列表界面css -->
+{% include 'includes/_list_management.html' %}
 
 {% block content %}
 <div class="content-wrapper">

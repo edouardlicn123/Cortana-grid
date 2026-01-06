@@ -2,26 +2,8 @@
 {% extends "base.html" %}
 {% block title %}网格管理{% endblock %}
 
-{% block page_styles %}
-<style>
-    /* 与 buildings.html 完全一致的顶部 padding */
-    .content-wrapper {
-        padding-top: 90px;
-    }
-    @media (max-width: 768px) {
-        .content-wrapper {
-            padding-top: 80px;
-        }
-    }
-
-    .table th, .table td {
-        vertical-align: middle;
-    }
-    .btn-sm i {
-        font-size: 0.9rem;
-    }
-</style>
-{% endblock %}
+<!-- 插入通用列表界面css -->
+{% include 'includes/_list_management.html' %}
 
 {% block content %}
 <!-- 统一的 wrapper -->

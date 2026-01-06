@@ -2,26 +2,8 @@
 {% extends "base.html" %}
 {% block title %}建筑管理{% endblock %}
 
-{% block page_styles %}
-<style>
-    /* 解决固定导航栏遮挡内容问题 - 增加顶部内边距 */
-    .content-wrapper {
-        padding-top: 90px; /* 根据您的导航栏实际高度调整（通常80-100px） */
-    }
-    @media (max-width: 768px) {
-        .content-wrapper {
-            padding-top: 80px;
-        }
-    }
-
-    .table th, .table td {
-        vertical-align: middle;
-    }
-    .btn-sm i {
-        font-size: 0.9rem;
-    }
-</style>
-{% endblock %}
+<!-- 插入通用列表界面css -->
+{% include 'includes/_list_management.html' %}
 
 {% block content %}
 <!-- 新增一个 wrapper 来应用 padding -->

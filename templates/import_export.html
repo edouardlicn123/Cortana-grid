@@ -2,6 +2,9 @@
 {% extends "base.html" %}
 {% block title %}数据导入导出{% endblock %}
 
+<!-- 插入通用列表界面css -->
+{% include 'includes/_list_management.html' %}
+
 {% block content %}
 <div class="container py-5">
     <div class="row justify-content-center">
@@ -136,17 +139,4 @@
 </div>
 {% endblock %}
 
-{% block extra_css %}
-<style>
-    .hover-shadow {
-        transition: all 0.3s ease;
-    }
-    .hover-shadow:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 20px rgba(0,0,0,0.15) !important;
-    }
-    .transition {
-        transition: all 0.3s ease;
-    }
-</style>
-{% endblock %}
+

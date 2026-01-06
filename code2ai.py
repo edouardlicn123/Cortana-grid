@@ -1,6 +1,5 @@
 # code2ai.py
 
-
 import os
 import datetime
 import glob
@@ -10,7 +9,7 @@ PROJECT_ROOT = os.path.abspath(os.path.dirname(__file__))
 OUTPUT_DIR = os.path.join(PROJECT_ROOT, '../code2ai')
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-# ==================== 要包含的文件分类 ====================
+# ==================== 要包含的文件分类（2026-01-05 最新版） ====================
 FILES_TO_INCLUDE = {
     "项目说明文档": [
         "*.html",                        # 根目录下的 progress.html, ARCHITECTURE_v2.html 等
@@ -30,12 +29,14 @@ FILES_TO_INCLUDE = {
     "路由模块 (routes/)": [
         "routes/__init__.py",
         "routes/main.py",
+        "routes/auth.py",
+        "routes/settings.py",
         "routes/grid.py",
         "routes/person.py",
         "routes/building.py",
         "routes/import_export.py",
         "routes/system_settings.py",
-        "routes/*.py",                   # 其他路由文件
+        "routes/*.py",
     ],
     "数据访问层 (repositories/)": [
         "repositories/__init__.py",
@@ -46,12 +47,28 @@ FILES_TO_INCLUDE = {
         "services/__init__.py",
         "services/*.py",
     ],
-    "模板文件 (templates/)": [
-        "templates/*.html",              # people.html, buildings.html, grids.html 等
+    "主模板文件 (templates/)": [
+        "templates/base.html",
+        "templates/people_list.html",        # 当前人员列表页
+        "templates/edit_person.html",
+        "templates/view_person.html",
+        "templates/buildings.html",
+        "templates/grids.html",
+        "templates/import_export.html",
+        "templates/system_settings.html",
+        "templates/*.html",
+    ],
+    "认证模板 (templates/auth/)": [
+        "templates/auth/*.html",             # login.html, change_password.html 等
+    ],
+    "个人设置模板 (templates/settings/)": [
+        "templates/settings/*.html",
+    ],
+    "错误页面 (templates/errors/)": [
         "templates/errors/*.html",
     ],
     "模板组件 (templates/includes/)": [
-        "templates/includes/*.html",     # _navbar.html, _styles.html, _scripts.html 等
+        "templates/includes/*.html",         # _navbar.html, _styles.html 等
     ],
     "自定义样式 (static/css/)": [
         "static/css/style.css",
@@ -60,12 +77,13 @@ FILES_TO_INCLUDE = {
         "static/themes/*.css",
     ],
     "自定义脚本 (static/js/)": [
-        "static/js/*.js",
+        "static/js/*.js",                    # idcard_parser.js, watermark.js 等
     ],
-    "其他静态资源": [
+    "静态图标等": [
         "static/favicon.ico",
-        # uploads/ 目录仅保留结构，不包含实际照片
-        "static/uploads/",               # 仅作为目录参考
+    ],
+    "上传目录结构参考": [
+        "static/uploads/",                   # 仅目录结构，不包含实际文件
     ]
 }
 
@@ -76,17 +94,20 @@ EXCLUDE_PATTERNS = {
     '.DS_Store', '.idea', '.vscode'
 }
 
-# 明确排除所有 Bootstrap 相关文件
+# 明确排除的旧/废弃文件
+EXCLUDE_FILES = {
+    'templates/people.html',             # 旧版，已替换为 people_list.html
+    'templates/persons.html',
+    'templates/person.html',
+    'templates/management.html',
+    'routes/management.py',              # 已删除
+}
+
+# Bootstrap 等第三方文件（不打包）
 BOOTSTRAP_EXCLUDES = {
-    'bootstrap.min.css',
-    'bootstrap-icons.css',
-    'bootstrap.bundle.min.js',
-    'bootstrap.bundle.js',
-    'bootstrap.js',
-    'bootstrap.css',
-    'bootstrap-icons.woff',
-    'bootstrap-icons.woff2',
-    'bootstrap-icons/fonts/',
+    'bootstrap.min.css', 'bootstrap.css', 'bootstrap.bundle.min.js',
+    'bootstrap.bundle.js', 'bootstrap.js', 'bootstrap-icons.css',
+    'bootstrap-icons.woff', 'bootstrap-icons.woff2'
 }
 
 def should_include(filepath):
@@ -94,26 +115,26 @@ def should_include(filepath):
     rel_path = os.path.relpath(filepath, PROJECT_ROOT)
     filename = os.path.basename(filepath)
 
-    # 排除指定目录
+    # 排除目录
     for pattern in EXCLUDE_PATTERNS:
         if pattern in rel_path.split(os.sep):
             return False
 
+    # 明确排除旧文件
+    if rel_path in EXCLUDE_FILES:
+        return False
+
     # 排除 Bootstrap 文件
     if filename in BOOTSTRAP_EXCLUDES:
         return False
-    if 'bootstrap' in filename.lower() and ('css' in filename or 'js' in filename):
+    if 'bootstrap' in filename.lower() and filename.endswith(('.css', '.js')):
         return False
 
     # 排除数据库文件
     if 'instance' in rel_path and rel_path.endswith('.sqlite'):
         return False
 
-    # 排除旧模板（已重构迁移）
-    if rel_path in ['templates/persons.html', 'templates/person.html']:
-        return False
-
-    # uploads/ 只包含目录结构，不打包实际图片（避免文件过大）
+    # uploads/ 只保留目录结构，不打包实际图片
     if rel_path.startswith('static/uploads/') and os.path.isfile(filepath):
         return False
 
@@ -132,26 +153,24 @@ def collect_files():
                 if os.path.isfile(match) and should_include(match):
                     collected[category].append(match)
                 elif os.path.isdir(match) and 'uploads' in match:
-                    # 只记录目录结构
-                    collected[category].append(match + os.sep)  # 加 / 表示目录
+                    collected[category].append(match + os.sep)  # 目录标记
     return collected
 
 
 def generate_output():
     timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-    output_file = os.path.join(OUTPUT_DIR, f'project_code_{timestamp}.txt')
+    output_file = os.path.join(OUTPUT_DIR, f'cortana_grid_code_{timestamp}.txt')
 
     with open(output_file, 'w', encoding='utf-8') as f:
-        f.write(f"# 项目全量代码包 - 社区网格化人口管理系统（Cortana Grid）\n")
+        f.write(f"# Cortana Grid 全量代码包 - 社区网格化人口管理系统\n")
         f.write(f"# 生成时间: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-        f.write(f"# 项目路径: {PROJECT_ROOT}\n")
-        f.write(f"# ====================================================================\n\n")
-        f.write(f"当前项目状态：重构完成，核心模块高度独立\n")
+        f.write(f"# 项目状态: 生产级稳定版（2026-01-05）\n")
+        f.write(f"# URL 规范: /people/ | /buildings/ | /grids/\n")
         f.write(f"# ====================================================================\n\n")
 
         collected = collect_files()
 
-        total_files = sum(len(files) for files in collected.values() if not str(files[0]).endswith(os.sep))
+        total_files = sum(len([f for f in files if not str(f).endswith(os.sep)]) for files in collected.values())
         f.write(f"# 打包摘要：共打包 {total_files} 个文件\n\n")
 
         for category, files in collected.items():
@@ -181,11 +200,11 @@ def generate_output():
             f.write(f"# ====================================================================\n\n")
 
         f.write(f"# 打包完成 - 共 {total_files} 个文件\n")
-        f.write(f"# 项目已达到生产级标准，可直接用于 AI 分析、备份或交付\n")
+        f.write(f"# 项目已完全就绪，可直接用于 AI 分析、备份、交付或开源\n")
 
-    print(f"代码包已生成：{output_file}")
+    print(f"最新代码包已生成：{output_file}")
     print(f"共打包 {total_files} 个文件")
-    print("打包完成，已完全匹配当前重构进度，可直接用于 AI 分析！")
+    print("Cortana Grid 生产级代码包生成成功！🚀")
 
 
 if __name__ == '__main__':
