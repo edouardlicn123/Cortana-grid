@@ -86,10 +86,10 @@
                             <thead class="table-light">
                                 <tr>
                                     <th width="5%">#</th>
-                                    <th width="15%">姓名</th>
-                                    <th width="20%">身份证号</th>
-                                    <th width="15%">联系电话</th>
-                                    <th width="25%">居住建筑</th>
+                                    <th width="120px">姓名</th> <!-- ≈7个汉字 -->
+                                    <th width="210px">身份证号</th> <!-- 18位 + 2字符余量 -->
+                                    <th width="180px">联系电话</th> <!-- 14位 + “...” 余量 -->
+                                    <th width="190px">居住建筑</th> <!-- ≈11个汉字 -->
                                     <th width="20%" class="text-center">操作</th>
                                 </tr>
                             </thead>
@@ -98,13 +98,26 @@
                                     {% for p in persons %}
                                     <tr>
                                         <td>{{ loop.index + (current_page - 1) * 20 }}</td>
-                                        <td><strong>{{ p.name }}</strong></td>
-                                        <td>{{ p.id_card or '未填写' }}</td>
-                                        <td>{{ p.phones or '未填写' }}</td>
-                                        <td>
+                                        <td class="text-truncate" style="max-width: 120px;" title="{{ p.name }}">
+                                            <strong>{{ p.name }}</strong>
+                                        </td>
+                                        <td class="text-monospace small" style="max-width: 210px;">
+                                            {{ p.id_card or '未填写' }}
+                                        </td>
+                                        <td style="max-width: 180px;" class="text-truncate" title="{{ p.phones or '' }}">
+                                            {% if p.phones %}
+                                                {% if p.phones|length > 14 %}
+                                                    {{ p.phones[:14] }}...
+                                                {% else %}
+                                                    {{ p.phones }}
+                                                {% endif %}
+                                            {% else %}
+                                                未填写
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-truncate" style="max-width: 190px;" title="{{ p.living_building_name or '未设置' }}">
                                             {% if p.living_building_name %}
-                                                {{ p.living_building_name }} 
-                                                <small class="text-muted">({{ p.building_type_display or '未知类型' }})</small>
+                                                {{ p.living_building_name }}
                                             {% else %}
                                                 <span class="text-muted">未设置居住建筑</span>
                                             {% endif %}
@@ -141,7 +154,7 @@
                         </table>
                     </div>
 
-                    <!-- 分页导航（保持原有逻辑） -->
+                    <!-- 分页导航 -->
                     {% if total_pages > 1 %}
                     <nav aria-label="人员分页">
                         <ul class="pagination justify-content-center mt-4">

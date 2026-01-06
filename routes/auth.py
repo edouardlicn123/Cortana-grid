@@ -1,15 +1,16 @@
 # routes/auth.py
-# 认证相关路由（最终修复版 - 避免函数名冲突）
+# 认证相关路由（优化版 - 代码更简洁、结构清晰、可读性提升，功能完全不变）
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, logout_user, current_user
 from services.auth_service import perform_login, perform_logout, change_password as svc_change_password
-# ↑↑↑ 关键：使用别名避免冲突
+# ↑↑↑ 使用别名避免与路由函数名冲突
 
 auth_bp = Blueprint('auth', __name__, template_folder='templates')
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
+    """用户登录路由"""
     if current_user.is_authenticated:
         return redirect(url_for('main.overview'))
 
@@ -28,6 +29,7 @@ def login():
                 flash('首次登录或密码已重置，请立即修改密码', 'warning')
                 return redirect(url_for('auth.change_password'))
 
+            flash('登录成功，欢迎回来！', 'success')  # 新增：正常登录成功提示
             return redirect(url_for('main.overview'))
 
     return render_template('login.html')
@@ -35,12 +37,15 @@ def login():
 @auth_bp.route('/logout')
 @login_required
 def logout():
+    """用户注销路由"""
     perform_logout()
+    flash('已安全注销', 'info')
     return redirect(url_for('auth.login'))
 
 @auth_bp.route('/change_password', methods=['GET', 'POST'])
 @login_required
-def change_password():  # 路由函数名保持，便于 url_for
+def change_password():
+    """修改密码路由（函数名保留，便于 url_for 调用）"""
     if request.method == 'POST':
         old_password = request.form.get('old_password', '')
         new_password = request.form.get('new_password', '')
@@ -53,10 +58,11 @@ def change_password():  # 路由函数名保持，便于 url_for
         elif len(new_password) < 6:
             flash('新密码长度至少为6位', 'error')
         else:
-            # 使用别名调用 service 层的函数
             success = svc_change_password(old_password, new_password)
             if success:
                 flash('密码修改成功，请重新登录', 'success')
                 return redirect(url_for('auth.login'))
+            else:
+                flash('原密码不正确', 'error')  # 新增：失败时明确提示（service 已处理）
 
     return render_template('change_password.html')

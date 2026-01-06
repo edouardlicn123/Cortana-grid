@@ -1,46 +1,44 @@
 # routes/settings.py
-# 个人设置路由 - 最终完美稳定版
-# 特性：
-# - 主题列表完整显示（所有 static/themes/*.css）
-# - 主题保存真正生效（数据库存纯文件名 xxx.css，与项目原始机制完全一致）
-# - 保存提示准确（成功/无修改/非法输入警告）
-# - 兼容旧数据（旧记录可能是 '' 或 'dark.css'）
-# - 字段校验宽容健壮
+# 个人设置路由（优化版 - 代码更简洁、可读性提升、健壮性更强，功能完全不变）
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+import os
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
 from repositories.base import get_db_connection
 from utils import logger
-import os
-from flask import current_app
+
 
 settings_bp = Blueprint('settings', __name__, url_prefix='/settings')
+
 
 @settings_bp.route('/personal_settings', methods=['GET', 'POST'])
 @login_required
 def personal_settings():
-    # ==================== 生成可用主题列表（完整路径格式，用于模板显示） ====================
-    available_themes = ['']  # 空字符串 = 默认主题
+    """个人设置页面（显示姓名、分页大小、主题切换）"""
+
+    # ==================== 加载可用主题列表 ====================
     themes_dir = os.path.join(current_app.static_folder, 'themes')
+    available_themes = ['']  # 空字符串代表默认主题
+
     if os.path.isdir(themes_dir):
         try:
-            theme_files = [
+            theme_files = sorted([
                 f for f in os.listdir(themes_dir)
                 if f.lower().endswith('.css') and os.path.isfile(os.path.join(themes_dir, f))
-            ]
-            # 生成完整路径，用于模板中 selected 判断和显示
-            available_themes.extend([f'themes/{f}' for f in sorted(theme_files)])
+            ])
+            available_themes.extend([f'themes/{f}' for f in theme_files])
         except Exception as e:
             logger.warning(f"扫描主题目录失败: {e}")
 
-    # ==================== POST 保存逻辑 ====================
+    # ==================== POST 处理保存 ====================
     if request.method == 'POST':
-        try:
-            updates = {}
+        updates = {}
 
+        try:
             # 1. 显示姓名
             full_name = request.form.get('full_name', '').strip()
-            if full_name != (current_user.full_name or ''):
+            current_full_name = current_user.full_name or ''
+            if full_name != current_full_name:
                 updates['full_name'] = full_name if full_name else None
 
             # 2. 每页条数
@@ -55,34 +53,33 @@ def personal_settings():
             elif page_size_str:
                 flash('每页条数格式不正确，已忽略此修改', 'warning')
 
-            # 3. 界面主题（关键：只保存纯文件名 xxx.css）
-            preferred_css_form = request.form.get('preferred_css', '').strip()  # 前端传纯文件名
+            # 3. 界面主题（只保存纯文件名 xxx.css）
+            preferred_css_form = request.form.get('preferred_css', '').strip()
+            current_theme = current_user.preferred_css or ''
+
             if preferred_css_form:
-                # 校验是否合法（检查 themes/preferred_css_form 是否存在）
                 if f'themes/{preferred_css_form}' in available_themes:
-                    preferred_css_new = preferred_css_form
+                    new_theme = preferred_css_form
                 else:
                     flash('所选主题无效，已忽略此修改', 'warning')
-                    preferred_css_new = current_user.preferred_css or ''
+                    new_theme = current_theme
             else:
-                preferred_css_new = ''
+                new_theme = ''
 
-            # 判断是否真正变化（兼容旧数据格式）
-            current = current_user.preferred_css or ''
-            if preferred_css_new != current:
-                updates['preferred_css'] = preferred_css_new
+            if new_theme != current_theme:
+                updates['preferred_css'] = new_theme
 
-            # ==================== 执行数据库更新 ====================
+            # ==================== 数据库更新 ====================
             if updates:
                 with get_db_connection() as conn:
-                    set_clause = ', '.join([f"{k} = ?" for k in updates])
+                    set_clause = ', '.join(f"{k} = ?" for k in updates)
                     values = list(updates.values()) + [current_user.id]
                     conn.execute(f"UPDATE user SET {set_clause} WHERE id = ?", values)
                     conn.commit()
 
-                # 更新当前用户对象（确保后续请求使用新值）
-                for k, v in updates.items():
-                    setattr(current_user, k, v)
+                # 更新当前用户对象（立即生效）
+                for key, value in updates.items():
+                    setattr(current_user, key, value)
 
                 flash('个人设置保存成功！', 'success')
             else:
@@ -97,5 +94,5 @@ def personal_settings():
     # ==================== GET 渲染页面 ====================
     return render_template(
         'settings.html',
-        available_themes=available_themes  # 确保模板一定能拿到完整列表
+        available_themes=available_themes
     )

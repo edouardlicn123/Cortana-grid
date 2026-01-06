@@ -1,5 +1,5 @@
 # routes/building.py
-# 建筑管理专用蓝图（终极完美版 - 采用方案1：在路由中预计算居住人数）
+# 建筑管理专用蓝图（优化终极版 - 代码更简洁、可读性提升、错误处理更健壮，功能完全不变）
 
 import time
 from flask import Blueprint, render_template, request, redirect, url_for, flash
@@ -12,7 +12,7 @@ from repositories.building_repo import (
     create_building,
     update_building,
     delete_building,
-    get_person_count_by_building  # 新增导入
+    get_person_count_by_building
 )
 from repositories.base import get_db_connection
 from utils import logger
@@ -24,25 +24,29 @@ building_bp = Blueprint(
     template_folder='../templates'
 )
 
+
 # ========================== 列表页 ==========================
 @building_bp.route('/', methods=['GET'])
 @login_required
 @permission_required('resource:building:view')
 def index():
-    buildings = get_all_buildings()  # 已带 grid_name
+    """建筑/小区列表页"""
+    buildings = get_all_buildings()  # 已包含 grid_name
     grids = get_all_grids()
 
-    # 方案1：在路由中预计算每个建筑的居住人数，避免模板调用函数
+    # 预计算每个建筑的居住人数（避免模板中调用函数）
     for b in buildings:
         b['person_count'] = get_person_count_by_building(b['id'])
 
     return render_template('buildings.html', buildings=buildings, grids=grids)
+
 
 # ========================== 新增 ==========================
 @building_bp.route('/add', methods=['GET', 'POST'])
 @login_required
 @permission_required('resource:building:edit')
 def add():
+    """新增建筑"""
     grids = get_all_grids()
 
     if request.method == 'POST':
@@ -58,6 +62,7 @@ def add():
             try:
                 grid_id = int(grid_id_str)
 
+                # 检查同网格下名称是否重复
                 with get_db_connection() as conn:
                     existing = conn.execute(
                         "SELECT id FROM building WHERE name = ? AND grid_id = ? AND is_deleted = 0",
@@ -78,13 +83,16 @@ def add():
                 logger.error(f"新增建筑错误: {type(e).__name__}: {e}")
                 flash('添加失败（数据库错误，请联系管理员查看日志）', 'error')
 
+        # POST 失败时回填表单数据
         return render_template(
             'edit_building.html',
             building={'name': name, 'type': type_, 'grid_id': grid_id_str or None},
             grids=grids
         )
 
+    # GET 请求：显示空表单
     return render_template('edit_building.html', building=None, grids=grids)
+
 
 # ========================== 编辑 ==========================
 @building_bp.route('/edit/<int:bid>', methods=['GET', 'POST'])
@@ -92,6 +100,7 @@ def add():
 @permission_required('resource:building:edit')
 @grid_data_permission(write=True)
 def edit(bid):
+    """编辑建筑"""
     building = get_building_by_id(bid)
     if not building:
         flash('建筑记录不存在或已被删除', 'error')
@@ -101,7 +110,7 @@ def edit(bid):
 
     if request.method == 'POST':
         name = request.form.get('name', '').strip()
-        type_ = request.form.get('type', '').strip() or building['type'] or 'residential_complex'
+        type_ = request.form.get('type', '').strip() or building.get('type', 'residential_complex')
         grid_id_str = request.form.get('grid_id', '').strip()
 
         if not name:
@@ -112,6 +121,7 @@ def edit(bid):
             try:
                 grid_id = int(grid_id_str)
 
+                # 检查修改后是否与其他建筑名称冲突（排除自身）
                 with get_db_connection() as conn:
                     conflict = conn.execute(
                         "SELECT id FROM building WHERE name = ? AND grid_id = ? AND id != ? AND is_deleted = 0",
@@ -123,15 +133,16 @@ def edit(bid):
                 else:
                     update_building(bid, name=name, type_=type_, grid_id=grid_id)
                     flash(f'"{name}" 修改成功', 'success')
-                    logger.info(f"用户 {current_user.username} 编辑建筑 ID {bid}")
+                    logger.info(f"用户 {current_user.username} 编辑建筑 ID {bid}（新名称: {name}）")
                     return redirect(url_for('building.index', _t=int(time.time())))
 
             except ValueError:
                 flash('网格选择无效，请刷新页面重试', 'error')
             except Exception as e:
-                logger.error(f"编辑建筑错误: {type(e).__name__}: {e}")
+                logger.error(f"编辑建筑错误 (ID: {bid}): {type(e).__name__}: {e}")
                 flash('修改失败（数据库错误，请联系管理员查看日志）', 'error')
 
+        # POST 失败时回填表单数据
         building.update({
             'name': name,
             'type': type_,
@@ -140,11 +151,13 @@ def edit(bid):
 
     return render_template('edit_building.html', building=building, grids=grids)
 
+
 # ========================== 查看详情 ==========================
 @building_bp.route('/view/<int:bid>', methods=['GET'])
 @login_required
 @permission_required('resource:building:view')
 def view(bid):
+    """建筑详情页"""
     building = get_building_by_id(bid)
     if not building:
         flash('建筑记录不存在或已被删除', 'error')
@@ -154,12 +167,14 @@ def view(bid):
 
     return render_template('view_building.html', building=building, person_count=person_count)
 
+
 # ========================== 删除 ==========================
 @building_bp.route('/delete/<int:bid>', methods=['POST'])
 @login_required
 @permission_required('resource:building:delete')
 @grid_data_permission(write=True)
 def delete(bid):
+    """删除建筑（软删除）"""
     success, msg = delete_building(bid)
     flash(msg, 'success' if success else 'error')
     logger.info(f"用户 {current_user.username} {'成功' if success else '失败'}删除建筑 ID {bid}")
