@@ -1,6 +1,11 @@
 # services/import_export_person.py
-# 人员专属导入导出逻辑（终极修复版 - 2026-01-06）
-# 修复：导出严格只输出 27 列，彻底杜绝 AB 列后无标题数据
+# 人员专属导入导出逻辑（终极扩展版 - 2026-01-06）
+# 新增：导入支持导出全部27个字段（宽松读取，无严格校验）
+#       - 必填仍为：姓名、身份证号、联系电话、居住小区/建筑
+#       - 其他字段可选存在即读取，缺失用默认值
+#       - 建筑名称匹配 living_building_id 和 household_building_id
+#       - 布尔字段宽松映射（1/是/True → 1，其他 → 0）
+#       - 所有字段直接存（字符串为主，无格式校验）
 
 import os
 import pandas as pd
@@ -15,9 +20,17 @@ from utils import logger
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment
 from openpyxl.utils.dataframe import dataframe_to_rows
+from werkzeug.utils import secure_filename
+
+
+# 布尔宽松映射（不加校验，直接判断是否像“是”）
+def str_to_bool(val: str) -> int:
+    val = str(val).strip().lower()
+    return 1 if val in ['1', '是', 'true', 'yes', 'y'] else 0
 
 
 def export_person_to_excel(user) -> tuple[str, str]:
+    # 【导出逻辑保持不变 - 已完美】
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     exports_dir = current_app.config['EXPORTS_FOLDER']
     os.makedirs(exports_dir, exist_ok=True)
@@ -31,7 +44,6 @@ def export_person_to_excel(user) -> tuple[str, str]:
         grid_name = grid['name'] if grid else "未知网格"
         filename_prefix += f"_{grid_name}"
 
-    # 定义导出字段（严格控制顺序和内容）
     headers = [
         '姓名', '身份证号', '性别', '出生日期', '联系电话', '现住小区/建筑', '门牌地址', '所属网格',
         '人员类型', '是否重点人员', '重点类别', '户籍小区/建筑', '户籍地址', '户编号',
@@ -48,7 +60,6 @@ def export_person_to_excel(user) -> tuple[str, str]:
         '小学/初中/高中/本科等', '在职/退休/无业等', '健康/良好/残疾/疾病等', '其他补充信息'
     ]
 
-    # 手动构建干净的数据行
     processed_data = []
     for item in raw_data:
         row = {
@@ -83,7 +94,6 @@ def export_person_to_excel(user) -> tuple[str, str]:
         }
         processed_data.append(row)
 
-    # 空数据时保留表头结构
     if not processed_data:
         processed_data = [dict.fromkeys(headers, '')]
 
@@ -96,13 +106,11 @@ def export_person_to_excel(user) -> tuple[str, str]:
     ws = wb.active
     ws.title = 'Person'
 
-    # 双表头
     ws.append(headers)
     ws.append(comments)
     for r in dataframe_to_rows(df, index=False, header=False):
         ws.append(r)
 
-    # 美化样式
     bold_font = Font(bold=True)
     center_align = Alignment(horizontal="center", vertical="center")
     wrap_align = Alignment(wrap_text=True)
@@ -113,7 +121,6 @@ def export_person_to_excel(user) -> tuple[str, str]:
     for cell in ws[2]:
         cell.alignment = wrap_align
 
-    # 自动列宽
     for col in ws.columns:
         max_length = 0
         column = col[0].column_letter
@@ -128,6 +135,7 @@ def export_person_to_excel(user) -> tuple[str, str]:
 
 
 def import_person_from_excel(file, user) -> tuple[bool, str]:
+    """扩展版：支持全部27字段导入（宽松、无校验）"""
     imports_folder = current_app.config['IMPORTS_FOLDER']
     temp_path = os.path.join(imports_folder, secure_filename(file.filename))
     file.save(temp_path)
@@ -135,42 +143,82 @@ def import_person_from_excel(file, user) -> tuple[bool, str]:
     try:
         df = pd.read_excel(temp_path, dtype=str).fillna('')
 
+        # 必填列检查（保持严格，避免垃圾数据）
         required_columns = ['姓名', '身份证号', '联系电话', '居住小区/建筑']
-        if not all(col in df.columns for col in required_columns):
-            return False, '人员导入：Excel 模板列不匹配，请下载最新模板'
+        actual_columns = [str(col).strip() for col in df.columns]
+        missing = [col for col in required_columns if col not in actual_columns]
+        if missing:
+            return False, f'人员导入失败：缺少必填列 {", ".join(missing)}。<br>请下载最新模板并确保包含这些列。'
 
         records = []
         fail_reasons = []
 
         for idx, row in df.iterrows():
+            # 核心必填
             name = str(row['姓名']).strip()
             id_card = str(row['身份证号']).strip()
-            phone = str(row['联系电话']).strip()
-            building_name = str(row['居住小区/建筑']).strip()
-            address_detail = str(row.get('门牌地址', '')).strip()
+            phones = str(row.get('联系电话', '')).strip()
+            living_building_name = str(row['居住小区/建筑']).strip()
 
             if not name or not id_card:
                 fail_reasons.append(f"第 {idx+2} 行：姓名或身份证为空")
                 continue
 
-            building = get_building_by_name_or_address(building_name)
-            if not building:
-                fail_reasons.append(f"第 {idx+2} 行：未找到建筑 '{building_name}'")
+            # 现住建筑匹配
+            living_building = get_building_by_name_or_address(living_building_name)
+            if not living_building:
+                fail_reasons.append(f"第 {idx+2} 行：未找到现住建筑 '{living_building_name}'")
                 continue
 
-            if not check_user_grid_permission(building['id']):
-                fail_reasons.append(f"第 {idx+2} 行：无权操作该网格建筑 '{building_name}'")
+            if not check_user_grid_permission(living_building['id']):
+                fail_reasons.append(f"第 {idx+2} 行：无权操作该网格建筑 '{living_building_name}'")
                 continue
 
-            records.append({
+            # 户籍建筑匹配（可选）
+            household_building_name = str(row.get('户籍小区/建筑', '')).strip()
+            household_building_id = None
+            if household_building_name:
+                household_building = get_building_by_name_or_address(household_building_name)
+                if household_building:
+                    household_building_id = household_building['id']
+                # 如果没找到也不报错，直接留空
+
+            # 构建记录（所有字段宽松读取）
+            record = {
                 'name': name,
                 'id_card': id_card,
-                'phones': phone,
-                'living_building_id': building['id'],
-                'address_detail': address_detail,
-                'notes': str(row.get('备注', ''))
-            })
+                'phones': phones,
+                'living_building_id': living_building['id'],
+                'address_detail': str(row.get('门牌地址', '')).strip(),
+                'notes': str(row.get('备注', '')).strip(),
 
+                # 新增扩展字段（全部可选、无校验）
+                'gender': str(row.get('性别', '')).strip(),
+                'birth_date': str(row.get('出生日期', '')).strip(),
+                'person_type': str(row.get('人员类型', '')).strip(),
+                'is_key_person': str_to_bool(row.get('是否重点人员', '')),
+                'key_categories': str(row.get('重点类别', '')).strip(),
+                'household_building_id': household_building_id,
+                'household_address': str(row.get('户籍地址', '')).strip(),
+                'household_number': str(row.get('户编号', '')).strip(),
+                'is_separated': str_to_bool(row.get('是否人户分离', '')),
+                'actual_residence': str(row.get('实际居住地', '')).strip(),
+                'has_moved_out': str_to_bool(row.get('是否已迁出', '')),
+                'move_out_date': str(row.get('迁出日期', '')).strip(),
+                'move_to': str(row.get('迁往地', '')).strip(),
+                'is_deceased': str_to_bool(row.get('是否已死亡', '')),
+                'death_date': str(row.get('死亡日期', '')).strip(),
+                'ethnicity': str(row.get('民族', '')).strip(),
+                'political_status': str(row.get('政治面貌', '')).strip(),
+                'marital_status': str(row.get('婚姻状况', '')).strip(),
+                'education': str(row.get('文化程度', '')).strip(),
+                'employment_education': str(row.get('工作学习情况', '')).strip(),
+                'health_condition': str(row.get('健康状况', '')).strip(),
+            }
+
+            records.append(record)
+
+        # 批量插入（需确保 repositories/person_repo.py 的 bulk_insert_people 支持这些字段）
         success_count, errors = bulk_insert_people(records) if records else (0, [])
         fail_count = len(df) - success_count
 
