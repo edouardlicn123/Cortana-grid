@@ -381,9 +381,9 @@ def get_overview_stats() -> Dict[str, int]:
 
 # ============================== 导出专用 ==============================
 
-def get_all_people_for_export() -> List[Dict]:
-    """导出全部人员数据（包含建筑、网格关联信息）"""
-    query = """
+def get_all_people_for_export(grid_ids: list[int] | None = None) -> List[Dict]:
+    """导出全部人员数据（支持按网格权限过滤）"""
+    base_query = """
         SELECT p.*, 
                b.name AS living_building_name,
                b.type AS building_type,
@@ -392,12 +392,19 @@ def get_all_people_for_export() -> List[Dict]:
         LEFT JOIN building b ON p.living_building_id = b.id
         LEFT JOIN grid g ON b.grid_id = g.id
         WHERE p.is_deleted = 0
-        ORDER BY p.id
     """
+    params: list = []
+
+    if grid_ids:
+        placeholders = ','.join(['?' for _ in grid_ids])
+        base_query += f" AND b.grid_id IN ({placeholders})"
+        params = grid_ids
+
+    base_query += " ORDER BY p.id"
 
     try:
         with get_db_connection() as conn:
-            rows = conn.execute(query).fetchall()
+            rows = conn.execute(base_query, params).fetchall()
 
         people = [dict(row) for row in rows]
 
@@ -405,7 +412,7 @@ def get_all_people_for_export() -> List[Dict]:
             person['building_type_display'] = get_building_type_display(person.get('building_type'))
             person['grid_name'] = person['grid_name'] or '无网格'
 
-        logger.info(f"成功导出人员数据：共 {len(people)} 条")
+        logger.info(f"成功导出人员数据：共 {len(people)} 条（网格过滤: {grid_ids})")
         return people
 
     except Exception as e:

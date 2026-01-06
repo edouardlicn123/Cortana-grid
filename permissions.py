@@ -158,3 +158,15 @@ def get_user_grid_ids(user):
     if hasattr(user, 'grid_id') and user.grid_id:
         return [user.grid_id]
     return []
+
+# ==================== 网格导入导出权限 ====================
+
+def check_user_grid_permission_for_grid_id(grid_id: int, user) -> bool:
+    """检查用户是否有操作指定网格的权限（用于导入时）"""
+    if not user.is_authenticated:
+        return False
+    if 'super_admin' in user.roles or 'community_admin' in user.roles:
+        return True
+    if 'grid_user' in user.roles and grid_id in user.managed_grids:
+        return True
+    return False
