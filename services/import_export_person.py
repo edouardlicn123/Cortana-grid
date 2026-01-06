@@ -159,9 +159,12 @@ def import_person_from_excel(file, user) -> tuple[bool, str]:
             if not name:
                 fail_reasons.append(f"第 {idx+2} 行：姓名为空")
                 continue
-            if not phones:
-                fail_reasons.append(f"第 {idx+2} 行：联系电话为空（{name}）")
-                continue
+
+            #允许电话为空           
+            # if not phones:
+            #     fail_reasons.append(f"第 {idx+2} 行：联系电话为空（{name}）")
+            #     continue
+
             if not living_building_name:
                 fail_reasons.append(f"第 {idx+2} 行：现住小区/建筑为空（{name}）")
                 continue

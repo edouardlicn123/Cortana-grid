@@ -36,20 +36,6 @@
                     </button>
                 </form>
 
-                <!-- Flash 消息 -->
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% if messages %}
-                        <div class="mt-4">
-                            {% for category, message in messages %}
-                                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show mt-3" role="alert">
-                                    <i class="bi bi-exclamation-triangle me-2"></i>{{ message }}
-                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                                </div>
-                            {% endfor %}
-                        </div>
-                    {% endif %}
-                {% endwith %}
-
                 <!-- 条件显示默认账号提示 -->
                 {% if show_default_credentials %}
                 <div class="mt-4 p-4 bg-light rounded text-center small">

@@ -1,5 +1,6 @@
 -- schema.sql
--- 社区网格化人口管理系统数据库结构（v2.0 最终版 - 完整恢复旧版丰富字段 + 补回户编号）
+-- 社区网格化人口管理系统数据库结构（生产级终极版 - 2026-01-06）
+-- 更新：性别允许为空（现实常见未填写情况） + 联系电话允许为空（导入宽松）
 
 -- 用户表
 CREATE TABLE IF NOT EXISTS user (
@@ -21,7 +22,7 @@ CREATE TABLE IF NOT EXISTS role (
     name TEXT UNIQUE NOT NULL
 );
 
--- 角色权限表（当前权限系统必需）
+-- 角色权限表
 CREATE TABLE IF NOT EXISTS role_permission (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     role_id INTEGER NOT NULL,
@@ -38,14 +39,14 @@ CREATE TABLE IF NOT EXISTS user_role (
     FOREIGN KEY (role_id) REFERENCES role (id) ON DELETE CASCADE
 );
 
--- 网格表（恢复旧版完整字段）
+-- 网格表
 CREATE TABLE IF NOT EXISTS grid (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     is_deleted INTEGER DEFAULT 0
 );
 
--- 小区/建筑表（恢复旧版全部丰富字段）
+-- 小区/建筑表
 CREATE TABLE IF NOT EXISTS building (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -86,17 +87,17 @@ CREATE TABLE IF NOT EXISTS building (
     UNIQUE (name, grid_id)
 );
 
--- 人员表（恢复旧版全部丰富字段 + 新增 other_id_type + 补回 household_number）
+-- 人员表（关键更新：gender 和 phones 允许为空）
 CREATE TABLE IF NOT EXISTS person (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     unique_id TEXT UNIQUE,
     name TEXT NOT NULL,
     id_card TEXT UNIQUE,
     passport TEXT,
-    other_id_type TEXT,               -- 新增字段
-    gender TEXT NOT NULL CHECK(gender IN ('男', '女')),
+    other_id_type TEXT,
+    gender TEXT CHECK(gender IN ('男', '女')),                 -- 允许为空，未填写时为 NULL
     birth_date TEXT,
-    phones TEXT,
+    phones TEXT,                                               -- 允许为空（导入时可无电话）
     address_detail TEXT NOT NULL,
     relationship TEXT,
     person_type TEXT DEFAULT '常住人口' CHECK(person_type IN ('常住人口', '流动人口')),
@@ -109,12 +110,12 @@ CREATE TABLE IF NOT EXISTS person (
     work_study TEXT,
     health TEXT,
     notes TEXT,
-    images TEXT,                       -- 照片路径（多个用逗号分隔）
+    images TEXT,
     living_building_id INTEGER,
     household_building_id INTEGER,
     household_address TEXT,
     family_id TEXT,
-    household_number TEXT,             -- 补回：户编号（关键字段）
+    household_number TEXT,
     household_entry_date TEXT,
     is_migrated_out INTEGER DEFAULT 0,
     household_exit_date TEXT,
@@ -144,11 +145,11 @@ CREATE TABLE IF NOT EXISTS settings (
     value TEXT NOT NULL
 );
 
--- 性能索引（全面覆盖查询场景）
+-- 性能索引
 CREATE INDEX IF NOT EXISTS idx_person_name ON person (name);
 CREATE INDEX IF NOT EXISTS idx_person_id_card ON person (id_card);
 CREATE INDEX IF NOT EXISTS idx_person_family_id ON person (family_id);
-CREATE INDEX IF NOT EXISTS idx_person_household_number ON person (household_number);  -- 新增索引
+CREATE INDEX IF NOT EXISTS idx_person_household_number ON person (household_number);
 CREATE INDEX IF NOT EXISTS idx_person_living_building_id ON person (living_building_id);
 CREATE INDEX IF NOT EXISTS idx_person_household_building_id ON person (household_building_id);
 CREATE INDEX IF NOT EXISTS idx_building_grid_id ON building (grid_id);
