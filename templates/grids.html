@@ -1,12 +1,12 @@
-<!-- templates/grids.html -->
+{# templates/grids.html #}
+{# 网格管理页面 - 最终版：保持当前布局 + 编辑按钮跳转到独立编辑页 edit_grid.html + 移除无效 JS #}
+
 {% extends "base.html" %}
 {% block title %}网格管理{% endblock %}
 
-<!-- 插入通用列表界面css -->
 {% include 'includes/_list_management.html' %}
 
 {% block content %}
-<!-- 统一的 wrapper -->
 <div class="content-wrapper">
     <div class="row justify-content-center">
         <div class="col-lg-12">
@@ -21,7 +21,6 @@
                 </div>
 
                 <div class="card-body">
-                    <!-- Flash 消息 -->
                     {% with messages = get_flashed_messages(with_categories=true) %}
                         {% if messages %}
                             {% for category, message in messages %}
@@ -38,10 +37,10 @@
                             <thead class="table-light">
                                 <tr>
                                     <th width="5%">#</th>
-                                    <th width="35%">网格名称</th>
-                                    <th width="30%">负责人</th>
+                                    <th width="20%">网格名称</th>
+                                    <th width="35%">负责人</th>
                                     <th width="10%">状态</th>
-                                    <th width="20%" class="text-center">操作</th>
+                                    <th width="30%" class="text-center">操作</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -59,7 +58,7 @@
                                         </td>
                                         <td>
                                             {% if g.managers %}
-                                                {{ g.managers | join('、') }}
+                                                {{ g.managers.replace(',', '、') }}
                                             {% elif is_virtual %}
                                                 <em class="text-muted">系统内置</em>
                                             {% else %}
@@ -74,17 +73,14 @@
                                             {% endif %}
                                         </td>
                                         <td class="text-center">
-                                            {% if not is_virtual %}
-                                                {% if not is_disabled %}
-                                                <button type="button" class="btn btn-warning btn-sm me-1"
-                                                        data-bs-toggle="modal" data-bs-target="#editModal"
-                                                        data-grid-id="{{ g.id }}"
-                                                        data-grid-name="{{ g.name }}"
-                                                        data-current-managers="{{ g.managers_ids | default('') }}">
+                                            {% if not is_virtual and not is_disabled %}
+                                                <!-- 改为直接链接跳转到独立编辑页 -->
+                                                <a href="{{ url_for('grid.edit', grid_id=g.id) }}" class="btn btn-warning btn-sm me-1" title="编辑">
                                                     <i class="bi bi-pencil"></i>
-                                                </button>
-                                                {% endif %}
+                                                </a>
+                                            {% endif %}
 
+                                            {% if not is_virtual %}
                                                 <form method="post" action="{{ url_for('grid.toggle_status', grid_id=g.id) }}" class="d-inline"
                                                       onsubmit="return confirm('确定{{ '启用' if is_disabled else '禁用' }}网格「{{ g.name }}」吗？');">
                                                     <button type="submit" class="btn btn-{{ 'success' if is_disabled else 'danger' }} btn-sm">
@@ -115,10 +111,10 @@
     </div>
 </div>
 
-<!-- 新增模态框（保持原有） -->
+<!-- 新增模态框（保持不变） -->
 <div class="modal fade" id="addModal" tabindex="-1">
     <div class="modal-dialog">
-        <form method="post" action="{{ url_for('grid.add') }}">
+        <form method="POST" action="{{ url_for('grid.add') }}">
             <div class="modal-content">
                 <div class="modal-header bg-success text-white">
                     <h5 class="modal-title">新增网格</h5>
@@ -139,83 +135,7 @@
     </div>
 </div>
 
-<!-- 编辑模态框（保持原有负责人多选） -->
-<div class="modal fade" id="editModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <form method="post" id="editForm">
-            <div class="modal-content">
-                <div class="modal-header bg-warning text-dark">
-                    <h5 class="modal-title">编辑网格</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <input type="hidden" name="grid_id" id="edit_grid_id">
-
-                    <div class="mb-4">
-                        <label class="form-label fw-bold">网格名称 <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control form-control-lg" id="edit_grid_name" name="name" required maxlength="50">
-                    </div>
-
-                    <hr>
-
-                    <h5 class="mb-3">负责人授权（可多选）</h5>
-                    <div class="row">
-                        {% for user in all_users %}
-                        <div class="col-md-6 col-lg-4 mb-3">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="manager_ids" value="{{ user.id }}"
-                                       id="user_{{ user.id }}">
-                                <label class="form-check-label" for="user_{{ user.id }}">
-                                    {{ user.full_name or user.username }} <small class="text-muted">({{ user.username }})</small>
-                                </label>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-
-                    {% if not all_users %}
-                    <p class="text-muted">暂无用户可分配</p>
-                    {% endif %}
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="submit" class="btn btn-warning btn-lg">保存更改</button>
-                </div>
-            </div>
-        </form>
-    </div>
-</div>
+<!-- 已移除编辑模态框（editModal），因为现在使用独立页面 edit_grid.html -->
 {% endblock %}
 
-{% block extra_js %}
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const editModal = document.getElementById('editModal');
-    const editForm = document.getElementById('editForm');
-
-    if (editModal && editForm) {
-        editModal.addEventListener('show.bs.modal', function (event) {
-            const button = event.relatedTarget;
-            const gridId = button.getAttribute('data-grid-id');
-            const gridName = button.getAttribute('data-grid-name');
-            const currentManagers = button.getAttribute('data-current-managers') || '';
-
-            document.getElementById('edit_grid_id').value = gridId;
-            document.getElementById('edit_grid_name').value = gridName;
-
-            document.querySelectorAll('input[name="manager_ids"]').forEach(cb => cb.checked = false);
-
-            if (currentManagers) {
-                const managerIds = currentManagers.split(',');
-                managerIds.forEach(id => {
-                    const cb = document.querySelector(`input[name="manager_ids"][value="${id.trim()}"]`);
-                    if (cb) cb.checked = true;
-                });
-            }
-
-            editForm.action = '{{ url_for("grid.edit", grid_id=0) }}'.replace('/0', '/' + gridId);
-        });
-    }
-});
-</script>
-{% endblock %}
+{# 已移除 extra_js 块，因为不再需要动态设置 action 和预加载 JS #}

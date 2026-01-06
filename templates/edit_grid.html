@@ -1,0 +1,78 @@
+{# templates/edit_grid.html #}
+{% extends "base.html" %}
+{% block title %}编辑网格{% endblock %}
+
+{% include 'includes/_list_management.html' %}
+
+{% block content %}
+<div class="content-wrapper">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h5 class="m-0 font-weight-bold text-primary">
+                        <i class="bi bi-pencil-square me-2"></i>编辑网格 - {{ grid.name }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show mb-4">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+
+                    <form method="POST">
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">网格名称 <span class="text-danger">*</span></label>
+                            <input type="text"
+                                   class="form-control form-control-lg"
+                                   name="name"
+                                   value="{{ grid.name }}"
+                                   required
+                                   maxlength="50">
+                            <div class="form-text">网格名称不能为空，最多50个字符。</div>
+                        </div>
+
+                        <hr class="my-5">
+
+                        <h5 class="mb-4">负责人授权（可多选）</h5>
+                        {% if all_users %}
+                        <div class="row">
+                            {% for user in all_users %}
+                            <div class="col-md-6 col-lg-4 mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="manager_ids" value="{{ user.id }}"
+                                           id="user_{{ user.id }}"
+                                           {% if user.id in current_manager_ids %}checked{% endif %}>
+                                    <label class="form-check-label" for="user_{{ user.id }}">
+                                        {{ user.full_name or user.username }}
+                                        <small class="text-muted">({{ user.username }})</small>
+                                    </label>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <p class="text-muted">暂无可用用户可分配</p>
+                        {% endif %}
+
+                        <div class="text-end mt-5">
+                            <a href="{{ url_for('grid.index') }}" class="btn btn-secondary btn-lg me-3">
+                                <i class="bi bi-arrow-left me-1"></i>取消
+                            </a>
+                            <button type="submit" class="btn btn-warning btn-lg px-5">
+                                <i class="bi bi-save me-2"></i>保存更改
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

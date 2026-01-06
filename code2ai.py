@@ -28,19 +28,10 @@ FILES_TO_INCLUDE = {
     ],
     "路由模块 (routes/)": [
         "routes/__init__.py",
-        "routes/main.py",
-        "routes/auth.py",
-        "routes/settings.py",
-        "routes/grid.py",
-        "routes/person.py",
-        "routes/building.py",
-        "routes/import_export.py",
-        "routes/system_settings.py",
         "routes/*.py",
     ],
     "数据访问层 (repositories/)": [
         "repositories/__init__.py",
-        "repositories/base.py",
         "repositories/*.py",
     ],
     "业务服务层 (services/)": [
@@ -48,21 +39,7 @@ FILES_TO_INCLUDE = {
         "services/*.py",
     ],
     "主模板文件 (templates/)": [
-        "templates/base.html",
-        "templates/people_list.html",        # 当前人员列表页
-        "templates/edit_person.html",
-        "templates/view_person.html",
-        "templates/buildings.html",
-        "templates/grids.html",
-        "templates/import_export.html",
-        "templates/system_settings.html",
         "templates/*.html",
-    ],
-    "认证模板 (templates/auth/)": [
-        "templates/auth/*.html",             # login.html, change_password.html 等
-    ],
-    "个人设置模板 (templates/settings/)": [
-        "templates/settings/*.html",
     ],
     "错误页面 (templates/errors/)": [
         "templates/errors/*.html",
