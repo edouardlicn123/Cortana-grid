@@ -2,71 +2,76 @@
 {% block title %}社区概览{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-lg-10">
-        <h2 class="mb-4 text-center">
-            <i class="bi bi-house-door me-2"></i>{{ community_name }} - 社区概览
-        </h2>
+<!-- 新增：与列表页面统一的 padding 容器 -->
+<div class="content-wrapper">
 
-        <!-- 统计卡片 -->
-        <div class="row g-4 mb-5">
-            <!-- 总人口 -->
-            <div class="col-md-3">
-                <div class="card text-white bg-primary shadow-sm h-100">
-                    <div class="card-body text-center py-4">
-                        <i class="bi bi-people display-4"></i>
-                        <h3 class="display-5 mt-3 mb-0">{{ stats.total_persons }}</h3>
-                        <p class="mb-0">社区总人口</p>
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <h2 class="mb-4 text-center">
+                <i class="bi bi-house-door me-2"></i>{{ community_name }} - 社区概览
+            </h2>
+
+            <!-- 统计卡片 -->
+            <div class="row g-4 mb-5">
+                <!-- 总人口 -->
+                <div class="col-md-3">
+                    <div class="card text-white bg-primary shadow-sm h-100">
+                        <div class="card-body text-center py-4">
+                            <i class="bi bi-people display-4"></i>
+                            <h3 class="display-5 mt-3 mb-0">{{ stats.total_persons }}</h3>
+                            <p class="mb-0">社区总人口</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 重点人口 -->
+                <div class="col-md-3">
+                    <div class="card text-white bg-danger shadow-sm h-100">
+                        <div class="card-body text-center py-4">
+                            <i class="bi bi-exclamation-triangle display-4"></i>
+                            <h3 class="display-5 mt-3 mb-0">{{ stats.key_persons }}</h3>
+                            <p class="mb-0">重点关注人口</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 总建筑 -->
+                <div class="col-md-3">
+                    <div class="card text-white bg-success shadow-sm h-100">
+                        <div class="card-body text-center py-4">
+                            <i class="bi bi-building display-4"></i>
+                            <h3 class="display-5 mt-3 mb-0">{{ stats.total_buildings }}</h3>
+                            <p class="mb-0">小区/建筑总数</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 总网格 -->
+                <div class="col-md-3">
+                    <div class="card text-white bg-info shadow-sm h-100">
+                        <div class="card-body text-center py-4">
+                            <i class="bi bi-grid-3x3-gap display-4"></i>
+                            <h3 class="display-5 mt-3 mb-0">{{ stats.total_grids }}</h3>
+                            <p class="mb-0">网格总数</p>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- 重点人口（新增/修复） -->
-            <div class="col-md-3">
-                <div class="card text-white bg-danger shadow-sm h-100">
-                    <div class="card-body text-center py-4">
-                        <i class="bi bi-exclamation-triangle display-4"></i>
-                        <h3 class="display-5 mt-3 mb-0">{{ stats.key_persons }}</h3>
-                        <p class="mb-0">重点关注人口</p>
-                    </div>
-                </div>
+            <!-- 快捷操作按钮 -->
+            <div class="text-center">
+                <a href="{{ url_for('person.index') }}" class="btn btn-primary btn-lg px-5 me-3">
+                    <i class="bi bi-people me-2"></i>人员管理
+                </a>
+                <a href="{{ url_for('building.index') }}" class="btn btn-success btn-lg px-5 me-3">
+                    <i class="bi bi-building me-2"></i>建筑管理
+                </a>
+                <a href="{{ url_for('grid.index') }}" class="btn btn-info btn-lg px-5">
+                    <i class="bi bi-grid-3x3-gap me-2"></i>网格管理
+                </a>
             </div>
-
-            <!-- 总建筑 -->
-            <div class="col-md-3">
-                <div class="card text-white bg-success shadow-sm h-100">
-                    <div class="card-body text-center py-4">
-                        <i class="bi bi-building display-4"></i>
-                        <h3 class="display-5 mt-3 mb-0">{{ stats.total_buildings }}</h3>
-                        <p class="mb-0">小区/建筑总数</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 总网格 -->
-            <div class="col-md-3">
-                <div class="card text-white bg-info shadow-sm h-100">
-                    <div class="card-body text-center py-4">
-                        <i class="bi bi-grid-3x3-gap display-4"></i>
-                        <h3 class="display-5 mt-3 mb-0">{{ stats.total_grids }}</h3>
-                        <p class="mb-0">网格总数</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 快捷操作按钮 -->
-        <div class="text-center">
-            <a href="{{ url_for('person.index') }}" class="btn btn-primary btn-lg px-5 me-3">
-                <i class="bi bi-people me-2"></i>人员管理
-            </a>
-            <a href="{{ url_for('building.index') }}" class="btn btn-success btn-lg px-5 me-3">
-                <i class="bi bi-building me-2"></i>建筑管理
-            </a>
-            <a href="{{ url_for('grid.index') }}" class="btn btn-info btn-lg px-5">
-                <i class="bi bi-grid-3x3-gap me-2"></i>网格管理
-            </a>
         </div>
     </div>
-</div>
+
+</div> {# <!-- /.content-wrapper --> #}
 {% endblock %}

@@ -1,6 +1,7 @@
 # routes/person.py
 # 人员管理专用蓝图（优化终极版 - 代码更简洁、可读性提升、错误处理更一致，功能完全不变）
 # 更新：彻底解决列表页面缓存问题，删除/导入/编辑后立即刷新显示最新数据
+# 修复：人员列表分页尊重用户个人设置的“每页显示条数”（2026-01-07）
 
 import time
 from flask import Blueprint, render_template, request, redirect, url_for, flash, make_response
@@ -35,7 +36,9 @@ def index():
     _ = request.args.get('_refresh')
 
     page = request.args.get('page', 1, type=int)
-    per_page = 20
+    
+    # 关键修复：使用用户个人设置的分页大小，兜底 20
+    per_page = current_user.page_size or 20
 
     # 搜索参数
     name = request.args.get('name', '').strip().lower()
@@ -61,7 +64,7 @@ def index():
         and (not family_id or family_id in p.get('family_id', ''))
     ]
 
-    # 分页计算
+    # 分页计算（使用动态 per_page）
     total = len(filtered_persons)
     total_pages = max(1, (total + per_page - 1) // per_page)
     start = (page - 1) * per_page
@@ -73,7 +76,8 @@ def index():
         persons=persons,
         total_pages=total_pages,
         current_page=page,
-        total=total
+        total=total,
+        per_page=per_page  # 新增：传给模板，便于分页链接保留搜索参数
     ))
 
     # 强制浏览器不缓存页面
@@ -105,7 +109,6 @@ def add():
             create_person(**_prepare_person_args(person_data))
             flash(f'"{person_data["name"]}" 添加成功', 'success')
             logger.info(f"用户 {current_user.username} 新增人员: {person_data['name']}")
-            # 使用 _refresh 参数强制刷新列表
             return redirect(url_for('person.index', _refresh=int(time.time())))
         except Exception as e:
             logger.error(f"新增人员失败: {e}")
@@ -217,7 +220,7 @@ def _extract_person_data(form) -> dict:
         'key_categories': ','.join(form.getlist('key_categories')),
         'other_id_type': form.get('other_id_type'),
         'passport': form.get('passport', '').strip(),
-        'household_number': form.get('household_number', '').strip(),  # 若前端已支持
+        'household_number': form.get('household_number', '').strip(),
     }
 
 
@@ -266,5 +269,5 @@ def _prepare_person_args(data: dict) -> dict:
         'key_categories': data['key_categories'],
         'other_id_type': data['other_id_type'],
         'passport': data['passport'],
-        'household_number': data.get('household_number'),  # 支持户编号
+        'household_number': data.get('household_number'),
     }
