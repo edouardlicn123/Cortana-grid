@@ -28,24 +28,35 @@
 
     <!-- 主内容区域 -->
     <main class="container-fluid py-4">
-        <!-- Flash 消息 -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <div class="row justify-content-center mb-4">
-                    <div class="col-lg-10">
-                        {% for category, message in messages %}
-                        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
-                            <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="关闭"></button>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-            {% endif %}
-        {% endwith %}
+        <!-- 全局顶部间距容器：避开固定导航栏 + 容纳 Flash 消息 -->
+        <div style="padding-top: 60px; min-height: calc(100vh - 200px);">
+            <div class="container-fluid">
 
-        <!-- 子模板内容 -->
-        {% block content %}{% endblock %}
+                <!-- Flash 消息（现在在间距容器内部，位置完美） -->
+                
+                <!-- Flash 消息 -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <div class="row justify-content-center mb-4" id="flash-messages-container">
+                            <div class="col-lg-10 col-xl-8">
+                                {% for category, message in messages %}
+                                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" 
+                                     role="alert" 
+                                     id="flash-{{ loop.index }}">
+                                    <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ message | safe }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="关闭"></button>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
+                {% endwith %}
+
+                <!-- 子模板主内容（只出现一次！） -->
+                {% block content %}{% endblock %}
+
+            </div>
+        </div>
     </main>
 
     <!-- 页脚 -->

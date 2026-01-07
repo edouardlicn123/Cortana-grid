@@ -1,5 +1,6 @@
 # routes/building.py
 # 建筑管理专用蓝图（优化终极版 - 代码更简洁、可读性提升、错误处理更健壮，功能完全不变）
+# 更新：建筑列表分页尊重用户个人设置的“每页显示条数”（2026-01-07）
 
 import time
 from flask import Blueprint, render_template, request, redirect, url_for, flash
@@ -30,15 +31,34 @@ building_bp = Blueprint(
 @login_required
 @permission_required('resource:building:view')
 def index():
-    """建筑/小区列表页"""
-    buildings = get_all_buildings()  # 已包含 grid_name
-    grids = get_all_grids()
+    """建筑/小区列表页（支持分页 + 用户个人设置）"""
+    # 关键修复：使用用户个人分页设置，兜底 20
+    per_page = current_user.page_size or 20
+    page = request.args.get('page', 1, type=int)
 
-    # 预计算每个建筑的居住人数（避免模板中调用函数）
+    # 获取全量数据
+    all_buildings = get_all_buildings()  # 已包含 grid_name
+
+    # 分页计算
+    total = len(all_buildings)
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    start = (page - 1) * per_page
+    buildings = all_buildings[start:start + per_page]
+
+    # 预计算分页后数据的居住人数（避免模板中调用函数）
     for b in buildings:
         b['person_count'] = get_person_count_by_building(b['id'])
 
-    return render_template('buildings.html', buildings=buildings, grids=grids)
+    grids = get_all_grids()
+
+    return render_template(
+        'buildings.html',
+        buildings=buildings,
+        grids=grids,
+        current_page=page,
+        total_pages=total_pages,
+        total=total
+    )
 
 
 # ========================== 新增 ==========================

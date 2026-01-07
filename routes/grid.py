@@ -1,5 +1,6 @@
 # routes/grid.py
 # 网格管理专用蓝图（优化版 - 代码更简洁、可读性提升、错误处理更一致，功能完全不变）
+# 更新：网格列表分页尊重用户个人设置的“每页显示条数”（2026-01-07）
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
@@ -38,9 +39,27 @@ grid_bp = Blueprint('grid', __name__, url_prefix='/grids', template_folder='../t
 @login_required
 @admin_only
 def index():
-    """网格列表页"""
-    grids = get_all_grids_with_managers_and_ids()
-    return render_template('grids.html', grids=grids)
+    """网格列表页（支持分页 + 用户个人设置）"""
+    # 关键修复：使用用户个人分页设置，兜底 20
+    per_page = current_user.page_size or 20
+    page = request.args.get('page', 1, type=int)
+
+    # 获取全量数据
+    all_grids = get_all_grids_with_managers_and_ids()
+
+    # 分页计算
+    total = len(all_grids)
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    start = (page - 1) * per_page
+    grids = all_grids[start:start + per_page]
+
+    return render_template(
+        'grids.html',
+        grids=grids,
+        current_page=page,
+        total_pages=total_pages,
+        total=total
+    )
 
 
 @grid_bp.route('/add', methods=['POST'])

@@ -1,5 +1,6 @@
 # routes/auth.py
 # 认证相关路由（优化版 - 代码更简洁、结构清晰、可读性提升，功能完全不变）
+# 修复：登录成功消息只在真实登录时显示，避免页面刷新重复出现（2026-01-07）
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, logout_user, current_user
@@ -29,10 +30,17 @@ def login():
                 flash('首次登录或密码已重置，请立即修改密码', 'warning')
                 return redirect(url_for('auth.change_password'))
 
-            flash('登录成功，欢迎回来！', 'success')  # 新增：正常登录成功提示
+            # 关键修复：只有真实登录（POST）时才显示欢迎消息
+            flash('登录成功，欢迎回来！', 'success')
             return redirect(url_for('main.overview'))
 
+        else:
+            # perform_login 已内部处理错误，这里不需要重复 flash
+            pass
+
+    # GET 请求（首次访问登录页或刷新）直接渲染，不触发任何 flash
     return render_template('login.html')
+
 
 @auth_bp.route('/logout')
 @login_required
@@ -41,6 +49,7 @@ def logout():
     perform_logout()
     flash('已安全注销', 'info')
     return redirect(url_for('auth.login'))
+
 
 @auth_bp.route('/change_password', methods=['GET', 'POST'])
 @login_required
@@ -63,6 +72,6 @@ def change_password():
                 flash('密码修改成功，请重新登录', 'success')
                 return redirect(url_for('auth.login'))
             else:
-                flash('原密码不正确', 'error')  # 新增：失败时明确提示（service 已处理）
+                flash('原密码不正确', 'error')
 
     return render_template('change_password.html')
