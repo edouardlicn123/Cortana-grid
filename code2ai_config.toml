@@ -1,0 +1,78 @@
+# code2ai_config.toml
+# Cortana Grid 项目专属源码汇总配置
+# 最后更新: 2026-01-14
+# 新增: 完全排除所有文件名中包含 "bootstrap" 的文件（不区分大小写）
+
+[project]
+name = "Cortana Grid"
+version = "v2.2 (生产级稳定版)"
+description = "社区网格化人口管理系统"
+
+[include]
+extensions = [
+    ".py", ".html", ".css", ".js", ".json", ".yaml", ".yml", ".toml", ".ini", ".cfg",
+    ".sh", ".sql", ".md", ".txt"
+]
+
+[special_include]
+# 路径中包含这些关键词的特定文件强制包含（相对路径判断）
+force_include_patterns = [
+    "themes/",              # 所有主题 css
+    "includes/",            # 模板组件
+    "errors/",              # 错误页面
+    "static/js/",           # 自定义 js
+    "static/css/style.css"  # 主样式
+]
+
+# 特定文件名（精确匹配，相对路径）
+force_include_files = [
+    "app.py",
+    "permissions.py",
+    "utils.py",
+    "schema.sql",
+    "run.sh",
+    "requirements.txt",
+    "Dockerfile",           # 如果有
+    "README.md"
+]
+
+[exclude]
+dirs = [
+    "__pycache__",
+    ".git",
+    ".idea",
+    ".vscode",
+    "node_modules",
+    ".venv",
+    "venv",
+    "env",
+    "instance",             # 数据库目录
+    "static/uploads",       # 用户上传照片
+    "downloads",            # 导入导出文件
+    "code2ai",              # 本工具输出目录
+    "migrations/versions",  # 如果以后用 alembic
+]
+
+files = [
+    ".gitignore",
+    ".DS_Store",
+    "Thumbs.db",
+    "*.sqlite",
+    "*.sqlite3",
+    "*.db"
+]
+
+extensions = [
+    ".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico", ".webp", ".bmp",
+    ".woff", ".woff2", ".ttf", ".eot", ".pdf", ".zip", ".tar.gz"
+]
+
+# 新增：文件名模式排除（支持简单包含匹配，不区分大小写）
+filename_patterns = [
+    "bootstrap"             # 排除所有文件名中包含 bootstrap 的文件（如 bootstrap.min.css、bootstrap.bundle.js 等）
+]
+
+[output]
+default_output_dir = "code2ai"
+filename_prefix = "cortana_grid_code_"
+max_file_size_kb = 1200          # 单个文件超过 1.2MB 跳过（防止输出文件爆炸）
