@@ -4,7 +4,7 @@
 from flask_login import UserMixin, AnonymousUserMixin
 from repositories.base import get_db_connection
 from utils import logger
-from typing import Set, List, Any
+from typing import Set, List, Dict, Optional, Tuple, Any
 
 
 class User(UserMixin):

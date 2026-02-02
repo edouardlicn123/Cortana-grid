@@ -3,7 +3,7 @@
 
 from .base import get_db_connection
 from utils import logger
-from typing import List, Dict
+from typing import List, Dict, Optional, Tuple, Any
 
 
 def get_all_roles() -> List[Dict]:

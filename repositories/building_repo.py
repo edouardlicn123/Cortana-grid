@@ -16,10 +16,11 @@
 #   - 版本：v2.3（仪表盘增强版 - 新增建筑类型分布统计函数 get_building_count_by_type）
 #   - 更新历史：
 #       • 2026-02-02：新增仪表盘统计函数 get_building_count_by_type
+#       • 2026-02-02：修复 typing 导入（补充 Tuple）
 
 from .base import get_db_connection
 from utils import logger
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple, Any
 
 
 # ==================== 建筑类型映射 ====================
@@ -229,9 +230,8 @@ def create_building(name: str, type_: str, grid_id: int | None = None, **extra_f
             if value is not None:
                 fields.append(key)
                 values.append(value)
-                placeholders += ', ?'
 
-    insert_sql = f"INSERT INTO building ({', '.join(fields)}) VALUES ({placeholders})"
+    insert_sql = f"INSERT INTO building ({', '.join(fields)}) VALUES ({', '.join(['?' for _ in fields])})"
 
     try:
         with get_db_connection() as conn:
@@ -329,3 +329,27 @@ def get_all_buildings_for_export(grid_ids: Optional[List[int]] = None) -> List[D
     except Exception as e:
         logger.error(f"导出建筑数据失败: {e}")
         raise
+
+def get_person_count_by_building(bid: int) -> int:
+    """
+    获取指定建筑下的当前居住人数（排除软删除人员）
+    
+    Args:
+        bid: 建筑 ID
+    
+    Returns:
+        int: 居住人数（living_building_id 匹配且未软删除）
+    """
+    query = """
+        SELECT COUNT(*) AS count
+        FROM person
+        WHERE living_building_id = ? AND is_deleted = 0
+    """
+
+    try:
+        with get_db_connection() as conn:
+            row = conn.execute(query, (bid,)).fetchone()
+        return row['count'] if row else 0
+    except Exception as e:
+        logger.error(f"获取建筑 {bid} 人员数量失败: {e}")
+        return 0

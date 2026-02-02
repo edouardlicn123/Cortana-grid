@@ -21,7 +21,7 @@
 from .base import get_db_connection
 from utils import logger
 from repositories.building_repo import get_building_type_display
-from typing import List, Dict, Tuple, Any
+from typing import List, Dict, Optional, Tuple, Any
 
 
 # ============================== 列表与查询 ==============================

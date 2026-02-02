@@ -5,7 +5,7 @@ from repositories.base import get_db_connection
 from werkzeug.security import check_password_hash, generate_password_hash
 from utils import logger
 from repositories.user import User
-from typing import Dict, Optional
+from typing import List, Dict, Optional, Tuple, Any
 
 
 def get_user_by_username(username: str) -> Optional[Dict]:

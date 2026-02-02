@@ -3,7 +3,7 @@
 
 from repositories.base import get_db_connection
 from utils import logger
-from typing import Dict
+from typing import List, Dict, Optional, Tuple, Any
 
 
 def get_setting(key: str, default: str = '') -> str:
