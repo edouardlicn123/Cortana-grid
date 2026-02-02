@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}社区概览{% endblock %}
+
 {% block content %}
 <!-- 新增：与列表页面统一的 padding 容器 -->
 <div class="content-wrapper">
@@ -9,7 +10,7 @@
                 <i class="bi bi-house-door me-2"></i>{{ community_name }} - 社区概览
             </h2>
 
-            <!-- 统计卡片 -->
+            <!-- 统计卡片（保持原有设计不变） -->
             <div class="row g-4 mb-5">
                 <!-- 总人口 -->
                 <div class="col-md-3">
@@ -56,7 +57,46 @@
                 </div>
             </div>
 
-            <!-- 快捷操作按钮 -->
+            <!-- 新增：动态统计仪表盘（ECharts） - 保持原有卡片风格与响应式布局 -->
+            <div class="row g-4 mb-5">
+                <!-- 人员类型分布（饼图） -->
+                <div class="col-lg-6">
+                    <div class="card shadow h-100">
+                        <div class="card-header bg-primary text-white py-3">
+                            <h5 class="mb-0"><i class="bi bi-pie-chart me-2"></i>人员类型分布</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="personTypeChart" style="width: 100%; height: 400px;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 建筑类型分布（环形图） -->
+                <div class="col-lg-6">
+                    <div class="card shadow h-100">
+                        <div class="card-header bg-success text-white py-3">
+                            <h5 class="mb-0"><i class="bi bi-donut-chart me-2"></i>建筑类型分布</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="buildingTypeChart" style="width: 100%; height: 400px;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 各网格人员数量（柱状图） -->
+                <div class="col-12">
+                    <div class="card shadow">
+                        <div class="card-header bg-info text-white py-3">
+                            <h5 class="mb-0"><i class="bi bi-bar-chart me-2"></i>各网格人员数量排行</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="gridChart" style="width: 100%; height: 450px;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 快捷操作按钮（保持原有位置与样式） -->
             <div class="text-center">
                 <a href="{{ url_for('person.index') }}" class="btn btn-primary btn-lg px-5 me-3">
                     <i class="bi bi-people me-2"></i>人员管理
@@ -70,6 +110,16 @@
             </div>
         </div>
     </div>
+</div>
+{% endblock %}
 
-</div> {# <!-- /.content-wrapper --> #}
+{% block extra_js %}
+<!-- ECharts CDN（轻量、稳定） -->
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<!-- 自定义图表初始化脚本 -->
+<script src="{{ url_for('static', filename='js/overview.js') }}"></script>
+<script>
+// 将后端传递的 chart_data 注入到全局变量，供 overview.js 使用
+window.chartData = {{ chart_data|tojson }};
+</script>
 {% endblock %}

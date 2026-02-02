@@ -1,6 +1,22 @@
 # repositories/person_repo.py
-# 人员数据访问层（优化终极版 - 功能完全不变，代码更健壮、可读、专业）
-# 2026-01-06 更新：补回 household_number 字段支持
+# 文件功能说明：
+#   - 人员数据访问层（Repository 层核心模块）
+#   - 核心职责：
+#       • 提供人员数据的完整 CRUD 操作（查询、详情、新增、批量导入、动态更新、软删除）
+#       • 支持建筑关联显示（居住建筑名称、类型友好中文显示）
+#       • 首页概览统计（总人数、重点人员等）
+#       • 仪表盘专用统计查询（v2.3 新增）：
+#           - 人员类型分布统计（用于饼图/环形图）
+#           - 各网格人员数量统计（用于柱状图）
+#       • 导出专用全量数据查询（支持网格权限过滤，返回丰富关联字段）
+#       • 批量导入兼容处理（支持 Excel 字段映射、错误收集）
+#   - 所有操作统一使用字典行工厂，返回标准 dict 结构
+#   - 全面异常处理 + 日志记录，确保生产环境健壮性
+#   - 依赖：repositories.base（数据库连接）、repositories.building_repo（类型显示工具）、utils.logger
+#   - 版本：v2.3（仪表盘增强版 - 新增人员类型/网格分布统计函数，补回 household_number 字段支持）
+#   - 更新历史：
+#       • 2026-01-06：补回 household_number 字段
+#       • 2026-02-02：新增仪表盘统计函数 get_person_count_by_type / get_person_count_by_grid
 
 from .base import get_db_connection
 from utils import logger
@@ -56,6 +72,75 @@ def get_person_by_id(pid: int) -> Dict | None:
     except Exception as e:
         logger.error(f"获取人员详情失败 (ID: {pid}): {e}")
         return None
+
+
+# ============================== 仪表盘统计（v2.3 新增） ==============================
+
+def get_person_count_by_type() -> List[Dict]:
+    """
+    统计人员类型分布（用于首页仪表盘饼图）
+    
+    Returns:
+        List[Dict]: [{'person_type': str, 'count': int}, ...]
+    """
+    query = """
+        SELECT person_type, COUNT(*) AS count
+        FROM person
+        WHERE is_deleted = 0
+        GROUP BY person_type
+        ORDER BY count DESC
+    """
+
+    try:
+        with get_db_connection() as conn:
+            rows = conn.execute(query).fetchall()
+
+        result = [dict(row) for row in rows]
+        # 确保“未分类”兜底
+        for item in result:
+            if not item['person_type']:
+                item['person_type'] = '未分类'
+
+        logger.debug(f"人员类型分布统计成功：{len(result)} 种类型")
+        return result
+
+    except Exception as e:
+        logger.error(f"人员类型分布统计失败: {e}")
+        return []
+
+
+def get_person_count_by_grid() -> List[Dict]:
+    """
+    统计各网格人员数量（用于首页仪表盘柱状图）
+    
+    Returns:
+        List[Dict]: [{'grid_name': str, 'count': int}, ...]
+    """
+    query = """
+        SELECT g.name AS grid_name, COUNT(p.id) AS count
+        FROM person p
+        LEFT JOIN building b ON p.living_building_id = b.id
+        LEFT JOIN grid g ON b.grid_id = g.id
+        WHERE p.is_deleted = 0
+        GROUP BY g.id, g.name
+        ORDER BY count DESC
+    """
+
+    try:
+        with get_db_connection() as conn:
+            rows = conn.execute(query).fetchall()
+
+        result = [dict(row) for row in rows]
+        # 确保网格名称兜底
+        for item in result:
+            item['grid_name'] = item['grid_name'] or '无网格'
+
+        logger.debug(f"各网格人员数量统计成功：{len(result)} 个网格")
+        return result
+
+    except Exception as e:
+        logger.error(f"各网格人员数量统计失败: {e}")
+        return []
 
 
 # ============================== 新增与批量插入 ==============================
@@ -176,21 +261,15 @@ def bulk_insert_people(people_data: List[Dict]) -> Tuple[int, List[str]]:
                     id_card = data.get('id_card')
 
                     if not name:
-                        fail_reasons.append(f"第 {idx+2} 行：姓名为空")
-                        continue
-                    if not phones:
-                        fail_reasons.append(f"第 {idx+2} 行：联系电话为空（{name}）")
-                        continue
-                    if not living_building_name:
-                        fail_reasons.append(f"第 {idx+2} 行：现住小区/建筑为空（{name}）")
+                        errors.append(f"第 {idx+2} 行：姓名为空")
                         continue
 
-                    # 参数兼容处理
+                    # 参数兼容处理（原代码中部分变量未定义，已修正逻辑）
                     phones = data.get('phones') or data.get('phone')
                     living_building_id = data.get('living_building_id')
                     address_detail = data.get('address_detail') or data.get('address')
 
-                    # 过滤掉已处理的键，剩余作为额外字段
+                    # 过滤已处理键，其余作为额外字段传递
                     extra_kwargs = {
                         k: v for k, v in data.items()
                         if k not in {
@@ -201,7 +280,7 @@ def bulk_insert_people(people_data: List[Dict]) -> Tuple[int, List[str]]:
 
                     create_person(
                         name=name.strip(),
-                        id_card=id_card.strip(),
+                        id_card=id_card.strip() if id_card else '',
                         phones=phones,
                         living_building_id=living_building_id,
                         address_detail=address_detail,
@@ -211,7 +290,7 @@ def bulk_insert_people(people_data: List[Dict]) -> Tuple[int, List[str]]:
 
                 except Exception as row_e:
                     error_msg = str(row_e).replace('\n', ' ')
-                    errors.append(f"第 {idx} 行: {error_msg}")
+                    errors.append(f"第 {idx+2} 行 ({name or '未知'}): {error_msg}")
 
             conn.commit()
 
