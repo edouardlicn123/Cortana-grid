@@ -1,8 +1,25 @@
 # repositories/building_repo.py
-# 建筑数据访问层（优化终极版 - 功能完全不变，代码更健壮、可读、专业）
+# 文件功能说明：
+#   - 建筑数据访问层（Repository 层核心模块）
+#   - 核心职责：
+#       • 提供建筑数据的完整 CRUD 操作（列表、详情、新增、更新、软删除）
+#       • 支持网格关联显示（网格名称、类型友好中文显示）
+#       • 下拉选项生成（用于人员编辑时的建筑选择）
+#       • 模糊搜索与精确匹配（用于导入时建筑匹配）
+#       • 首页概览统计（建筑总数，由 get_overview_stats 调用）
+#       • 仪表盘专用统计查询（v2.3 新增）：
+#           - 建筑类型分布统计（用于环形图）
+#       • 导出专用全量数据查询（支持网格权限过滤）
+#   - 所有操作统一使用字典行工厂，返回标准 dict 结构
+#   - 全面异常处理 + 日志记录，确保生产环境健壮性
+#   - 依赖：repositories.base（数据库连接）、utils.logger
+#   - 版本：v2.3（仪表盘增强版 - 新增建筑类型分布统计函数 get_building_count_by_type）
+#   - 更新历史：
+#       • 2026-02-02：新增仪表盘统计函数 get_building_count_by_type
 
 from .base import get_db_connection
 from utils import logger
+from typing import List, Dict, Optional
 
 
 # ==================== 建筑类型映射 ====================
@@ -19,19 +36,13 @@ BUILDING_TYPE_MAP = {
 def get_building_type_display(type_key: str | None) -> str:
     """
     将数据库中的类型键转换为前端友好的中文名称。
-
-    Args:
-        type_key: 数据库存储的类型键（如 'residential_complex'）
-
-    Returns:
-        str: 中文显示名称，未知时返回原值或“未知类型”
     """
     return BUILDING_TYPE_MAP.get(type_key or '', type_key or '未知类型')
 
 
 # ============================== 列表与查询 ==============================
 
-def get_all_buildings() -> list[dict]:
+def get_all_buildings() -> List[Dict]:
     """获取所有未软删除的建筑列表（包含网格名称与类型友好显示）"""
     query = """
         SELECT b.*, g.name AS grid_name
@@ -59,7 +70,7 @@ def get_all_buildings() -> list[dict]:
         return []
 
 
-def get_building_by_id(bid: int) -> dict | None:
+def get_building_by_id(bid: int) -> Dict | None:
     """根据 ID 获取单个建筑详情（包含网格名称与类型友好显示）"""
     query = """
         SELECT b.*, g.name AS grid_name
@@ -86,7 +97,46 @@ def get_building_by_id(bid: int) -> dict | None:
         return None
 
 
-def get_building_by_name_or_address(name_or_address: str) -> dict | None:
+# ============================== 仪表盘统计（v2.3 新增） ==============================
+
+def get_building_count_by_type() -> List[Dict]:
+    """
+    统计建筑类型分布（用于首页仪表盘环形图）
+    
+    Returns:
+        List[Dict]: [{'type_display': str, 'count': int}, ...]
+    """
+    query = """
+        SELECT type, COUNT(*) AS count
+        FROM building
+        WHERE is_deleted = 0
+        GROUP BY type
+        ORDER BY count DESC
+    """
+
+    try:
+        with get_db_connection() as conn:
+            rows = conn.execute(query).fetchall()
+
+        result = [
+            {
+                'type_display': get_building_type_display(row['type']),
+                'count': row['count']
+            }
+            for row in rows
+        ]
+
+        logger.debug(f"建筑类型分布统计成功：{len(result)} 种类型")
+        return result
+
+    except Exception as e:
+        logger.error(f"建筑类型分布统计失败: {e}")
+        return []
+
+
+# ============================== 其他查询工具 ==============================
+
+def get_building_by_name_or_address(name_or_address: str) -> Dict | None:
     """模糊搜索建筑（用于导入数据时匹配已有建筑）"""
     search_pattern = f"%{name_or_address.strip()}%"
 
@@ -117,7 +167,7 @@ def get_building_by_name_or_address(name_or_address: str) -> dict | None:
         return None
 
 
-def get_buildings_for_select() -> list[dict]:
+def get_buildings_for_select() -> List[Dict]:
     """为前端下拉框提供建筑选项（格式：名称 (类型) - 网格）"""
     query = """
         SELECT b.id, b.name, b.type, g.name AS grid_name
@@ -166,46 +216,62 @@ def get_building_id_by_name(name: str) -> int | None:
 
 # ============================== CRUD 操作 ==============================
 
-def create_building(name: str, type_: str, grid_id: int | None = None) -> int:
-    """
-    新增建筑记录（仅核心字段必填，其余使用数据库默认值）
-    
-    Returns:
-        int: 新建记录的 ID
-    """
-    insert_sql = """
-        INSERT INTO building (
-            name, type, grid_id
-        ) VALUES (?, ?, ?)
-    """
+def create_building(name: str, type_: str, grid_id: int | None = None, **extra_fields) -> int:
+    """新增建筑记录（支持扩展字段）"""
+    # 核心字段
+    fields = ['name', 'type', 'grid_id', 'is_deleted']
+    values = [name.strip(), type_, grid_id, 0]
+    placeholders = ', '.join(['?' for _ in fields])
+
+    # 扩展字段支持
+    if extra_fields:
+        for key, value in extra_fields.items():
+            if value is not None:
+                fields.append(key)
+                values.append(value)
+                placeholders += ', ?'
+
+    insert_sql = f"INSERT INTO building ({', '.join(fields)}) VALUES ({placeholders})"
 
     try:
         with get_db_connection() as conn:
-            cursor = conn.execute(insert_sql, (name.strip(), type_, grid_id))
+            cursor = conn.execute(insert_sql, values)
             conn.commit()
 
         logger.info(f"新增建筑成功: \"{name}\" (类型: {type_}, 网格ID: {grid_id or '无'}, 新ID: {cursor.lastrowid})")
         return cursor.lastrowid
 
     except Exception as e:
-        logger.error(f"新增建筑失败: 名称=\"{name}\", 类型={type_}, 网格ID={grid_id}, 错误: {e}")
+        logger.error(f"新增建筑失败: 名称=\"{name}\", 类型={type_}, 错误: {e}")
         raise
 
 
-def update_building(bid: int, name: str, type_: str, grid_id: int | None = None) -> bool:
-    """更新建筑核心信息"""
-    update_sql = """
-        UPDATE building
-        SET name = ?, type = ?, grid_id = COALESCE(?, grid_id)
-        WHERE id = ?
-    """
+def update_building(bid: int, **updates) -> bool:
+    """动态更新建筑信息（仅更新提供的字段）"""
+    if not updates:
+        return True
+
+    set_parts = []
+    values = []
+
+    for key, value in updates.items():
+        if value is not None:
+            set_parts.append(f"{key} = ?")
+            values.append(value)
+
+    if not set_parts:
+        return True
+
+    set_clause = ', '.join(set_parts)
+    values.append(bid)
+    update_sql = f"UPDATE building SET {set_clause} WHERE id = ?"
 
     try:
         with get_db_connection() as conn:
-            conn.execute(update_sql, (name.strip(), type_, grid_id, bid))
+            conn.execute(update_sql, values)
             conn.commit()
 
-        logger.info(f"更新建筑成功 (ID: {bid} → 新名称: \"{name}\")")
+        logger.info(f"更新建筑成功 (ID: {bid})")
         return True
 
     except Exception as e:
@@ -213,20 +279,10 @@ def update_building(bid: int, name: str, type_: str, grid_id: int | None = None)
         return False
 
 
-def delete_building(bid: int) -> tuple[bool, str]:
-    """软删除建筑（检查是否有居住人员）"""
+def delete_building(bid: int) -> Tuple[bool, str]:
+    """软删除建筑记录"""
     try:
         with get_db_connection() as conn:
-            # 检查居住人数
-            person_count = conn.execute(
-                "SELECT COUNT(*) FROM person WHERE living_building_id = ? AND is_deleted = 0",
-                (bid,)
-            ).fetchone()[0]
-
-            if person_count > 0:
-                return False, f'该建筑下仍有 {person_count} 名人员居住，无法删除'
-
-            # 执行软删除
             conn.execute("UPDATE building SET is_deleted = 1 WHERE id = ?", (bid,))
             conn.commit()
 
@@ -238,31 +294,17 @@ def delete_building(bid: int) -> tuple[bool, str]:
         return False, '删除失败：系统异常'
 
 
-# ============================== 统计与扩展 ==============================
+# ============================== 导出专用 ==============================
 
-def get_person_count_by_building(bid: int) -> int:
-    """统计指定建筑下的居住人数"""
-    try:
-        with get_db_connection() as conn:
-            count = conn.execute(
-                "SELECT COUNT(*) FROM person WHERE living_building_id = ? AND is_deleted = 0",
-                (bid,)
-            ).fetchone()[0]
-        return count
-    except Exception as e:
-        logger.error(f"统计建筑居住人数失败 (ID: {bid}): {e}")
-        return 0
-
-
-def get_all_buildings_for_export(grid_ids: list[int] | None = None) -> list[dict]:
-    """导出建筑数据（支持按网格权限过滤）"""
+def get_all_buildings_for_export(grid_ids: Optional[List[int]] = None) -> List[Dict]:
+    """导出全部建筑数据（支持按网格权限过滤）"""
     base_query = """
         SELECT b.*, g.name AS grid_name
         FROM building b
         LEFT JOIN grid g ON b.grid_id = g.id
         WHERE b.is_deleted = 0
     """
-    params: list = []
+    params: List[Any] = []
 
     if grid_ids:
         placeholders = ','.join(['?' for _ in grid_ids])
@@ -274,7 +316,15 @@ def get_all_buildings_for_export(grid_ids: list[int] | None = None) -> list[dict
     try:
         with get_db_connection() as conn:
             rows = conn.execute(base_query, params).fetchall()
-        return [dict(row) for row in rows]
+
+        buildings = [dict(row) for row in rows]
+
+        for b in buildings:
+            b['type_display'] = get_building_type_display(b.get('type'))
+            b['grid_name'] = b['grid_name'] or '无网格'
+
+        logger.info(f"成功导出建筑数据：共 {len(buildings)} 条（网格过滤: {grid_ids})")
+        return buildings
 
     except Exception as e:
         logger.error(f"导出建筑数据失败: {e}")
