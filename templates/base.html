@@ -1,4 +1,3 @@
-<!-- templates/base.html（最新完整版：标题 + CSS + JS 全部模块化移出） -->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -7,9 +6,13 @@
     
     <!-- 动态标题部分 -->
     {% include 'includes/_title.html' %}
+    
     <!-- 全局CSS -->
     {% include 'includes/_styles.html' %}
-    {% block page_styles %}{% endblock %} 
+    
+    <!-- 子模板可以在这里插入页面专用样式 -->
+    {% block page_styles %}{% endblock %}
+    
     <!-- 水印功能开始，必须先于脚本 -->
     {% if current_user.is_authenticated %}
     <script>
@@ -17,7 +20,8 @@
     </script>
     {% endif %}
     <!-- 水印功能结束 -->
-    <!-- 全局脚本 -->
+    
+    <!-- 全局脚本（Bootstrap 等基础 JS） -->
     {% include 'includes/_scripts.html' %}
 
 </head>
@@ -32,8 +36,6 @@
         <div style="padding-top: 60px; min-height: calc(100vh - 200px);">
             <div class="container-fluid">
 
-                <!-- Flash 消息（现在在间距容器内部，位置完美） -->
-                
                 <!-- Flash 消息 -->
                 {% with messages = get_flashed_messages(with_categories=true) %}
                     {% if messages %}
@@ -62,6 +64,12 @@
     <!-- 页脚 -->
     {% include 'includes/_footer.html' %}
 
+    <!-- 子模板额外 JS 占位（关键修复！） -->
+    <!-- 所有子模板（如 overview.html）的 extra_js 都会插入这里 -->
+    <!-- 必须放在 </body> 之前，保证 DOM 加载完成 -->
+    {% block extra_js %}
+        <!-- 默认空，子模板可覆盖 -->
+    {% endblock %}
 
 </body>
 </html>

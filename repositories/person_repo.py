@@ -2,21 +2,33 @@
 # 文件功能说明：
 #   - 人员数据访问层（Repository 层核心模块）
 #   - 核心职责：
-#       • 提供人员数据的完整 CRUD 操作（查询、详情、新增、批量导入、动态更新、软删除）
-#       • 支持建筑关联显示（居住建筑名称、类型友好中文显示）
-#       • 首页概览统计（总人数、重点人员等）
+#       • 提供人员数据的完整 CRUD 操作（列表查询、详情、单条新增、批量导入、动态更新、软删除）
+#       • 支持建筑关联查询与友好显示（居住建筑名称、建筑类型中文映射）
+#       • 首页概览统计（总人数、重点人员、建筑数、网格数）
 #       • 仪表盘专用统计查询（v2.3 新增）：
 #           - 人员类型分布统计（用于饼图/环形图）
 #           - 各网格人员数量统计（用于柱状图）
 #       • 导出专用全量数据查询（支持网格权限过滤，返回丰富关联字段）
-#       • 批量导入兼容处理（支持 Excel 字段映射、错误收集）
-#   - 所有操作统一使用字典行工厂，返回标准 dict 结构
-#   - 全面异常处理 + 日志记录，确保生产环境健壮性
-#   - 依赖：repositories.base（数据库连接）、repositories.building_repo（类型显示工具）、utils.logger
-#   - 版本：v2.3（仪表盘增强版 - 新增人员类型/网格分布统计函数，补回 household_number 字段支持）
+#       • 批量导入兼容处理（支持 Excel 字段映射、错误收集与回滚提示）
+#   - 所有查询统一使用字典行工厂（dict_row_factory），返回标准 dict 结构
+#   - 全面异常处理 + 日志记录（使用 utils.logger），确保生产环境健壮性
+#   - 关键设计原则：
+#       • 软删除机制（is_deleted = 1）
+#       • 动态字段更新（update_person 支持任意字段组合）
+#       • 网格权限过滤（导出时使用）
+#       • 字段兼容性（批量导入时处理 Excel 可能的列名差异）
+#       • 布尔字段统一转为 0/1 存储
+#   - 依赖：
+#       • repositories.base → get_db_connection
+#       • repositories.building_repo → get_building_type_display
+#       • utils → logger
+#   - 版本：v2.3（仪表盘增强版）
 #   - 更新历史：
-#       • 2026-01-06：补回 household_number 字段
+#       • 2026-01-06：补回 household_number 字段支持
 #       • 2026-02-02：新增仪表盘统计函数 get_person_count_by_type / get_person_count_by_grid
+#       • 2026-02-02：完善 get_overview_stats（增加重点人员统计）
+#       • 2026-02-02：优化批量导入逻辑（字段兼容、错误收集更清晰）
+#       • 2026-02-02：补充完整类型注解与详细文档字符串
 
 from .base import get_db_connection
 from utils import logger
@@ -24,10 +36,15 @@ from repositories.building_repo import get_building_type_display
 from typing import List, Dict, Optional, Tuple, Any
 
 
-# ============================== 列表与查询 ==============================
+# ============================== 列表与详情查询 ==============================
 
 def get_all_persons() -> List[Dict]:
-    """获取所有未软删除的人员列表（包含居住建筑名称与类型友好显示）"""
+    """
+    获取所有未软删除的人员列表（包含居住建筑名称与类型友好显示）。
+    
+    Returns:
+        List[Dict]: 人员记录列表，每个 dict 包含 living_building_name 和 building_type_display
+    """
     query = """
         SELECT p.*, 
                b.name AS living_building_name,
@@ -46,8 +63,8 @@ def get_all_persons() -> List[Dict]:
 
         for p in persons:
             p['building_type_display'] = (
-                get_building_type_display(p['building_type'])
-                if p['building_type']
+                get_building_type_display(p.get('building_type'))
+                if p.get('building_type')
                 else '未知类型'
             )
 
@@ -59,14 +76,21 @@ def get_all_persons() -> List[Dict]:
         return []
 
 
-def get_person_by_id(pid: int) -> Dict | None:
-    """根据 ID 获取单个人员完整详情"""
+def get_person_by_id(pid: int) -> Optional[Dict]:
+    """
+    根据 ID 获取单个人员完整详情。
+    
+    Args:
+        pid: 人员 ID
+    
+    Returns:
+        Optional[Dict]: 人员信息字典，若不存在或已软删除返回 None
+    """
     query = "SELECT * FROM person WHERE id = ? AND is_deleted = 0"
 
     try:
         with get_db_connection() as conn:
             row = conn.execute(query, (pid,)).fetchone()
-
         return dict(row) if row else None
 
     except Exception as e:
@@ -78,10 +102,10 @@ def get_person_by_id(pid: int) -> Dict | None:
 
 def get_person_count_by_type() -> List[Dict]:
     """
-    统计人员类型分布（用于首页仪表盘饼图）
+    统计人员类型分布（用于首页仪表盘饼图/环形图）。
     
     Returns:
-        List[Dict]: [{'person_type': str, 'count': int}, ...]
+        List[Dict]: [{'person_type': str, 'count': int}, ...]，按数量降序
     """
     query = """
         SELECT person_type, COUNT(*) AS count
@@ -96,7 +120,7 @@ def get_person_count_by_type() -> List[Dict]:
             rows = conn.execute(query).fetchall()
 
         result = [dict(row) for row in rows]
-        # 确保“未分类”兜底
+        # 兜底处理空值
         for item in result:
             if not item['person_type']:
                 item['person_type'] = '未分类'
@@ -111,10 +135,10 @@ def get_person_count_by_type() -> List[Dict]:
 
 def get_person_count_by_grid() -> List[Dict]:
     """
-    统计各网格人员数量（用于首页仪表盘柱状图）
+    统计各网格下的人员数量（用于首页仪表盘柱状图）。
     
     Returns:
-        List[Dict]: [{'grid_name': str, 'count': int}, ...]
+        List[Dict]: [{'grid_name': str, 'count': int}, ...]，按数量降序
     """
     query = """
         SELECT g.name AS grid_name, COUNT(p.id) AS count
@@ -131,7 +155,7 @@ def get_person_count_by_grid() -> List[Dict]:
             rows = conn.execute(query).fetchall()
 
         result = [dict(row) for row in rows]
-        # 确保网格名称兜底
+        # 兜底处理无网格
         for item in result:
             item['grid_name'] = item['grid_name'] or '无网格'
 
@@ -148,41 +172,49 @@ def get_person_count_by_grid() -> List[Dict]:
 def create_person(
     name: str,
     id_card: str,
-    phones: str | None = None,
-    gender: str | None = None,
-    birth_date: str | None = None,
+    phones: Optional[str] = None,
+    gender: Optional[str] = None,
+    birth_date: Optional[str] = None,
     person_type: str = '常住人口',
-    living_building_id: int | None = None,
-    address_detail: str | None = None,
-    household_building_id: int | None = None,
-    household_address: str | None = None,
-    family_id: str | None = None,
-    household_number: str | None = None,          # 补回
-    household_entry_date: str | None = None,
+    living_building_id: Optional[int] = None,
+    address_detail: Optional[str] = None,
+    household_building_id: Optional[int] = None,
+    household_address: Optional[str] = None,
+    family_id: Optional[str] = None,
+    household_number: Optional[str] = None,
+    household_entry_date: Optional[str] = None,
     is_separated: bool = False,
-    current_residence: str | None = None,
+    current_residence: Optional[str] = None,
     is_migrated_out: bool = False,
-    household_exit_date: str | None = None,
-    migration_destination: str | None = None,
+    household_exit_date: Optional[str] = None,
+    migration_destination: Optional[str] = None,
     is_deceased: bool = False,
-    death_date: str | None = None,
-    nationality: str | None = None,
-    political_status: str | None = None,
-    marital_status: str | None = None,
-    education: str | None = None,
-    work_study: str | None = None,
-    health: str | None = None,
-    notes: str | None = None,
+    death_date: Optional[str] = None,
+    nationality: Optional[str] = None,
+    political_status: Optional[str] = None,
+    marital_status: Optional[str] = None,
+    education: Optional[str] = None,
+    work_study: Optional[str] = None,
+    health: Optional[str] = None,
+    notes: Optional[str] = None,
     is_key_person: bool = False,
-    key_categories: str | None = None,
-    other_id_type: str | None = None,
-    passport: str | None = None
+    key_categories: Optional[str] = None,
+    other_id_type: Optional[str] = None,
+    passport: Optional[str] = None
 ) -> int:
     """
-    新增单个人员记录
+    新增单个人员记录（支持所有字段）。
+    
+    Args:
+        name: 姓名（必填）
+        id_card: 身份证号（必填）
+        ... 其他字段均为可选
     
     Returns:
-        int: 新建记录的 ID
+        int: 新插入的人员 ID
+    
+    Raises:
+        Exception: 插入失败时抛出
     """
     base_fields = [
         'name', 'id_card', 'phones', 'gender', 'birth_date', 'person_type',
@@ -197,7 +229,7 @@ def create_person(
         ('household_building_id', household_building_id),
         ('household_address', household_address),
         ('family_id', family_id),
-        ('household_number', household_number),                  # 补回
+        ('household_number', household_number),
         ('household_entry_date', household_entry_date),
         ('is_separated', 1 if is_separated else 0),
         ('current_residence', current_residence),
@@ -245,10 +277,13 @@ def create_person(
 
 def bulk_insert_people(people_data: List[Dict]) -> Tuple[int, List[str]]:
     """
-    批量导入人员数据（支持 Excel 导入）
+    批量导入人员数据（主要用于 Excel 导入）。
+    
+    Args:
+        people_data: 每行数据的字典列表（键为字段名）
     
     Returns:
-        Tuple[int, List[str]]: (成功数量, 错误信息列表)
+        Tuple[int, List[str]]: (成功导入条数, 错误信息列表)
     """
     success_count = 0
     errors: List[str] = []
@@ -261,15 +296,18 @@ def bulk_insert_people(people_data: List[Dict]) -> Tuple[int, List[str]]:
                     id_card = data.get('id_card')
 
                     if not name:
-                        errors.append(f"第 {idx+2} 行：姓名为空")
+                        errors.append(f"第 {idx+2} 行：姓名为空，跳过")
+                        continue
+                    if not id_card:
+                        errors.append(f"第 {idx+2} 行：身份证号为空，跳过")
                         continue
 
-                    # 参数兼容处理（原代码中部分变量未定义，已修正逻辑）
+                    # 字段兼容处理（Excel 可能使用 phone 而非 phones）
                     phones = data.get('phones') or data.get('phone')
                     living_building_id = data.get('living_building_id')
                     address_detail = data.get('address_detail') or data.get('address')
 
-                    # 过滤已处理键，其余作为额外字段传递
+                    # 其余字段作为额外参数
                     extra_kwargs = {
                         k: v for k, v in data.items()
                         if k not in {
@@ -280,7 +318,7 @@ def bulk_insert_people(people_data: List[Dict]) -> Tuple[int, List[str]]:
 
                     create_person(
                         name=name.strip(),
-                        id_card=id_card.strip() if id_card else '',
+                        id_card=id_card.strip(),
                         phones=phones,
                         living_building_id=living_building_id,
                         address_detail=address_detail,
@@ -290,7 +328,8 @@ def bulk_insert_people(people_data: List[Dict]) -> Tuple[int, List[str]]:
 
                 except Exception as row_e:
                     error_msg = str(row_e).replace('\n', ' ')
-                    errors.append(f"第 {idx+2} 行 ({name or '未知'}): {error_msg}")
+                    name_str = data.get('name', '未知')
+                    errors.append(f"第 {idx+2} 行 ({name_str}): {error_msg}")
 
             conn.commit()
 
@@ -306,39 +345,48 @@ def bulk_insert_people(people_data: List[Dict]) -> Tuple[int, List[str]]:
 
 def update_person(
     pid: int,
-    name: str | None = None,
-    id_card: str | None = None,
-    phones: str | None = None,
-    gender: str | None = None,
-    birth_date: str | None = None,
-    person_type: str | None = None,
-    living_building_id: int | None = None,
-    address_detail: str | None = None,
-    household_building_id: int | None = None,
-    household_address: str | None = None,
-    family_id: str | None = None,
-    household_number: str | None = None,          # 补回
-    household_entry_date: str | None = None,
-    is_separated: bool | None = None,
-    current_residence: str | None = None,
-    is_migrated_out: bool | None = None,
-    household_exit_date: str | None = None,
-    migration_destination: str | None = None,
-    is_deceased: bool | None = None,
-    death_date: str | None = None,
-    nationality: str | None = None,
-    political_status: str | None = None,
-    marital_status: str | None = None,
-    education: str | None = None,
-    work_study: str | None = None,
-    health: str | None = None,
-    notes: str | None = None,
-    is_key_person: bool | None = None,
-    key_categories: str | None = None,
-    other_id_type: str | None = None,
-    passport: str | None = None
+    name: Optional[str] = None,
+    id_card: Optional[str] = None,
+    phones: Optional[str] = None,
+    gender: Optional[str] = None,
+    birth_date: Optional[str] = None,
+    person_type: Optional[str] = None,
+    living_building_id: Optional[int] = None,
+    address_detail: Optional[str] = None,
+    household_building_id: Optional[int] = None,
+    household_address: Optional[str] = None,
+    family_id: Optional[str] = None,
+    household_number: Optional[str] = None,
+    household_entry_date: Optional[str] = None,
+    is_separated: Optional[bool] = None,
+    current_residence: Optional[str] = None,
+    is_migrated_out: Optional[bool] = None,
+    household_exit_date: Optional[str] = None,
+    migration_destination: Optional[str] = None,
+    is_deceased: Optional[bool] = None,
+    death_date: Optional[str] = None,
+    nationality: Optional[str] = None,
+    political_status: Optional[str] = None,
+    marital_status: Optional[str] = None,
+    education: Optional[str] = None,
+    work_study: Optional[str] = None,
+    health: Optional[str] = None,
+    notes: Optional[str] = None,
+    is_key_person: Optional[bool] = None,
+    key_categories: Optional[str] = None,
+    other_id_type: Optional[str] = None,
+    passport: Optional[str] = None
 ) -> bool:
-    """动态更新人员信息（仅更新提供的字段）"""
+    """
+    动态更新人员信息（仅更新提供的非空字段）。
+    
+    Args:
+        pid: 人员 ID
+        ... 各字段均为可选
+    
+    Returns:
+        bool: 更新是否成功
+    """
     updates: List[str] = []
     values: List[Any] = []
 
@@ -354,7 +402,7 @@ def update_person(
         ('household_building_id', household_building_id),
         ('household_address', household_address),
         ('family_id', family_id),
-        ('household_number', household_number),               # 补回
+        ('household_number', household_number),
         ('household_entry_date', household_entry_date),
         ('current_residence', current_residence),
         ('household_exit_date', household_exit_date),
@@ -372,7 +420,6 @@ def update_person(
         ('passport', passport),
     ]
 
-    # 布尔字段特殊处理
     bool_fields = [
         ('is_separated', is_separated),
         ('is_migrated_out', is_migrated_out),
@@ -411,7 +458,15 @@ def update_person(
 
 
 def delete_person(pid: int) -> Tuple[bool, str]:
-    """软删除人员记录"""
+    """
+    软删除指定人员（设置 is_deleted = 1）。
+    
+    Args:
+        pid: 人员 ID
+    
+    Returns:
+        Tuple[bool, str]: (是否成功, 提示信息)
+    """
     try:
         with get_db_connection() as conn:
             conn.execute("UPDATE person SET is_deleted = 1 WHERE id = ?", (pid,))
@@ -428,37 +483,50 @@ def delete_person(pid: int) -> Tuple[bool, str]:
 # ============================== 统计与概览 ==============================
 
 def get_overview_stats() -> Dict[str, int]:
-    """获取系统首页关键统计数据"""
+    """
+    获取系统首页关键统计数据（供 routes/main.py 使用）。
+    
+    Returns:
+        Dict[str, int]: {'total_persons', 'key_persons', 'total_buildings', 'total_grids'}
+    """
     default_stats = {
         'total_persons': 0,
+        'key_persons': 0,
         'total_buildings': 0,
-        'total_grids': 0,
-        'key_persons': 0
+        'total_grids': 0
     }
 
     try:
         with get_db_connection() as conn:
-            total_persons = conn.execute(
-                "SELECT COUNT(*) FROM person WHERE is_deleted = 0"
-            ).fetchone()[0]
+            # 总人数（未软删除）
+            persons_row = conn.execute(
+                "SELECT COUNT(*) AS count FROM person WHERE is_deleted = 0"
+            ).fetchone()
+            total_persons = persons_row['count'] if persons_row else 0
 
-            total_buildings = conn.execute(
-                "SELECT COUNT(*) FROM building WHERE is_deleted = 0"
-            ).fetchone()[0]
+            # 重点人员（已启用真实统计）
+            key_persons_row = conn.execute(
+                "SELECT COUNT(*) AS count FROM person WHERE is_key_person = 1 AND is_deleted = 0"
+            ).fetchone()
+            key_persons = key_persons_row['count'] if key_persons_row else 0
 
-            total_grids = conn.execute(
-                "SELECT COUNT(*) FROM grid WHERE is_deleted = 0"
-            ).fetchone()[0]
+            # 总建筑数（未软删除）
+            buildings_row = conn.execute(
+                "SELECT COUNT(*) AS count FROM building WHERE is_deleted = 0"
+            ).fetchone()
+            total_buildings = buildings_row['count'] if buildings_row else 0
 
-            key_persons = conn.execute(
-                "SELECT COUNT(*) FROM person WHERE is_key_person = 1 AND is_deleted = 0"
-            ).fetchone()[0]
+            # 总网格数（未软删除）
+            grids_row = conn.execute(
+                "SELECT COUNT(*) AS count FROM grid WHERE is_deleted = 0"
+            ).fetchone()
+            total_grids = grids_row['count'] if grids_row else 0
 
         stats = {
             'total_persons': total_persons,
+            'key_persons': key_persons,
             'total_buildings': total_buildings,
-            'total_grids': total_grids,
-            'key_persons': key_persons
+            'total_grids': total_grids
         }
         logger.debug(f"首页统计数据加载成功: {stats}")
         return stats
@@ -470,8 +538,19 @@ def get_overview_stats() -> Dict[str, int]:
 
 # ============================== 导出专用 ==============================
 
-def get_all_people_for_export(grid_ids: list[int] | None = None) -> List[Dict]:
-    """导出全部人员数据（支持按网格权限过滤）"""
+def get_all_people_for_export(grid_ids: Optional[List[int]] = None) -> List[Dict]:
+    """
+    获取全部人员数据（支持按网格权限过滤），专用于导出功能。
+    
+    Args:
+        grid_ids: 允许导出的网格 ID 列表（None 表示无限制）
+    
+    Returns:
+        List[Dict]: 人员记录列表（包含 living_building_name、building_type_display、grid_name）
+    
+    Raises:
+        Exception: 查询失败时抛出
+    """
     base_query = """
         SELECT p.*, 
                b.name AS living_building_name,
@@ -482,7 +561,7 @@ def get_all_people_for_export(grid_ids: list[int] | None = None) -> List[Dict]:
         LEFT JOIN grid g ON b.grid_id = g.id
         WHERE p.is_deleted = 0
     """
-    params: list = []
+    params: List[Any] = []
 
     if grid_ids:
         placeholders = ','.join(['?' for _ in grid_ids])

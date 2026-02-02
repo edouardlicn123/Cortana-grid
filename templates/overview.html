@@ -57,7 +57,7 @@
                 </div>
             </div>
 
-            <!-- 新增：动态统计仪表盘（ECharts） - 保持原有卡片风格与响应式布局 -->
+            <!-- 动态统计仪表盘（ECharts） - 三图表布局 + 响应式 -->
             <div class="row g-4 mb-5">
                 <!-- 人员类型分布（饼图） -->
                 <div class="col-lg-6">
@@ -96,7 +96,7 @@
                 </div>
             </div>
 
-            <!-- 快捷操作按钮（保持原有位置与样式） -->
+            <!-- 快捷操作按钮 -->
             <div class="text-center">
                 <a href="{{ url_for('person.index') }}" class="btn btn-primary btn-lg px-5 me-3">
                     <i class="bi bi-people me-2"></i>人员管理
@@ -114,12 +114,107 @@
 {% endblock %}
 
 {% block extra_js %}
-<!-- ECharts CDN（轻量、稳定） -->
-<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
-<!-- 自定义图表初始化脚本 -->
-<script src="{{ url_for('static', filename='js/overview.js') }}"></script>
+<!-- ECharts 主 CDN（国内稳定源） -->
+<script src="https://cdn.bootcdn.net/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
+
+<!-- 备用 CDN（可选保留，如果主源不稳可启用） -->
+<!-- 
 <script>
-// 将后端传递的 chart_data 注入到全局变量，供 overview.js 使用
-window.chartData = {{ chart_data|tojson }};
+  if (typeof echarts === 'undefined') {
+    document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"><\/script>');
+  }
+</script>
+-->
+
+<!-- 数据注入 -->
+<script>
+  window.chartData = {{ chart_data | tojson | safe }};
+</script>
+
+<!-- 图表初始化脚本 -->
+<script>
+// 空数据处理函数
+function getSafeData(data) {
+  if (!Array.isArray(data) || data.length === 0) {
+    return [{ name: '暂无数据', value: 1, itemStyle: { color: '#ccc' } }];
+  }
+  return data;
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  // 人员类型饼图
+  const personDom = document.getElementById('personTypeChart');
+  if (personDom) {
+    const personChart = echarts.init(personDom, 'macarons');
+    personChart.setOption({
+      tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+      legend: { orient: 'vertical', left: 'left' },
+      series: [{
+        name: '人员类型',
+        type: 'pie',
+        radius: '65%',
+        center: ['50%', '50%'],
+        data: getSafeData(chartData?.person_type || []),
+        emphasis: {
+          itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0,0,0,0.5)' }
+        }
+      }]
+    });
+  }
+
+  // 建筑类型环形图
+  const buildingDom = document.getElementById('buildingTypeChart');
+  if (buildingDom) {
+    const buildingChart = echarts.init(buildingDom, 'macarons');
+    buildingChart.setOption({
+      tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+      legend: { orient: 'vertical', left: 'left' },
+      series: [{
+        name: '建筑类型',
+        type: 'pie',
+        radius: ['40%', '70%'],
+        center: ['50%', '50%'],
+        data: getSafeData(chartData?.building_type || []),
+        emphasis: {
+          itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0,0,0,0.5)' }
+        }
+      }]
+    });
+  }
+
+  // 各网格人员柱状图
+  const gridDom = document.getElementById('gridChart');
+  if (gridDom) {
+    const gridChart = echarts.init(gridDom, 'macarons');
+    const names = chartData?.grid_person?.names?.length > 0 
+      ? chartData.grid_person.names 
+      : ['暂无网格'];
+    const counts = chartData?.grid_person?.counts?.length > 0 
+      ? chartData.grid_person.counts 
+      : [0];
+
+    gridChart.setOption({
+      tooltip: { trigger: 'axis' },
+      grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+      xAxis: { type: 'category', data: names, axisLabel: { rotate: 30 } },
+      yAxis: { type: 'value', name: '人数' },
+      series: [{
+        name: '人员数量',
+        type: 'bar',
+        barWidth: '60%',
+        data: counts,
+        itemStyle: { color: '#5470C6' },
+        label: { show: true, position: 'top' }
+      }]
+    });
+  }
+
+  // 窗口大小变化时重绘图表
+  window.addEventListener('resize', () => {
+    personChart?.resize();
+    buildingChart?.resize();
+    gridChart?.resize();
+  });
+});
 </script>
 {% endblock %}
