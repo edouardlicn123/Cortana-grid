@@ -1,22 +1,27 @@
 # routes/import_export.py
 # 导入导出路由（优化版 - 代码更简洁、可读性提升、错误处理更友好，功能完全不变）
 # 更新：2026-02-09 字段全面同步最新 schema，支持人员模块所有字段的导入导出
-# 优化：导入/导出错误提示更具体，日志记录更详细，支持人员专属处理器
+# 重大优化：模板下载改为动态生成（无需预置静态文件），使用 openpyxl 在内存中实时创建
+# 增强：导出/导入错误提示更具体，日志记录更详细，支持人员专属处理器
 
 import os
 import time
+from datetime import datetime
+from io import BytesIO
+
 from flask import (
     Blueprint, send_from_directory, request, flash,
-    redirect, url_for, render_template, current_app, jsonify
+    redirect, url_for, render_template, current_app, send_file, jsonify
 )
 from flask_login import login_required, current_user
 from permissions import permission_required
 from services.import_export_service import (
     export_data_to_excel,
     process_import_excel,
-    get_template_path
 )
 from services.import_export_person import export_person_to_excel, import_person_from_excel
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment
 from utils import logger
 
 
@@ -42,25 +47,96 @@ def index():
 @login_required
 @permission_required('import_export:all')
 def download_template(data_type):
-    """下载导入模板（Excel空表 + 注释）"""
-    template_path = get_template_path(data_type)
+    """动态生成并下载导入模板（实时创建带表头+注释的 Excel，无需预置文件）"""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = f"{data_type}_导入模板"
 
-    if not template_path or not os.path.exists(template_path):
-        flash(f'模板文件不存在：{data_type}', 'error')
-        logger.warning(f"用户 {current_user.username} 请求不存在的模板：{data_type}")
+    # 根据类型定义表头和注释（与专属服务文件保持一致）
+    if data_type == 'person':
+        # 人员模板表头（与 import_export_person.py 中的 headers 同步）
+        headers = [
+            '姓名', '身份证号', '唯一标识', '护照/其他证件号码', '其他证件类型',
+            '性别', '出生日期', '联系电话', '现住小区/建筑', '现住详细门牌',
+            '所属网格', '与其他人员关系', '人员类型', '是否重点人员', '重点类别',
+            '户籍小区/建筑', '户籍详细地址', '户编号', '户号', '户籍迁入日期',
+            '是否人户分离', '实际居住地', '是否已迁出', '迁出日期', '迁往地',
+            '是否已死亡', '死亡日期', '民族', '政治面貌', '婚姻状况',
+            '文化程度', '工作/学习情况', '健康状况', '备注'
+        ]
+
+        comments = [
+            '必填，真实姓名', '可选，18位身份证号（无证可留空）', '系统内部唯一标识（可选）',
+            '护照或其他证件号码', '护照/军人证/港澳通行证等',
+            '男/女（支持：男、M、1；女、F、0）', '格式：YYYYMMDD', '多个用;分隔，可选',
+            '必填，系统内现住建筑名称', '必填，如1单元101室',
+            '自动关联，无需填写', '如：户主、配偶、子女、父母、租户（可选）',
+            '常住人口/流动人口', '是/否 或 1/0', '多个类别用,分隔，如独居老人,低保户',
+            '本社区户籍建筑名称（可选）', '外地户籍填写完整地址', '家庭编号（如001、A001）',
+            '户口本户号', '格式：YYYYMMDD',
+            '是/否 或 1/0', '人户分离时的实际居住地址', '是/否 或 1/0', '格式：YYYYMMDD', '迁往省市区',
+            '是/否 或 1/0', '格式：YYYYMMDD', '如汉族、回族', '如中共党员、群众', '未婚/已婚/离异/丧偶',
+            '小学/初中/高中/本科等', '在职/在校/退休/无业等', '健康/良好/慢性病/残疾等', '其他补充信息'
+        ]
+
+    elif data_type == 'building':
+        flash('建筑模板尚未实现，请使用人员模板或联系管理员', 'warning')
+        logger.info(f"用户 {current_user.username} 请求建筑模板（暂未实现）")
         return redirect(url_for('import_export.index'))
 
-    try:
-        return send_from_directory(
-            directory=os.path.dirname(template_path),
-            path=os.path.basename(template_path),
-            as_attachment=True,
-            download_name=f"{data_type}_导入模板.xlsx"
-        )
-    except Exception as e:
-        logger.error(f"下载模板失败 ({data_type}): {e}")
-        flash('下载模板失败，请联系管理员', 'error')
+        # 如果未来实现，可在此定义建筑表头和注释
+        # headers = [...]
+        # comments = [...]
+
+    else:
+        flash(f'暂不支持类型：{data_type}', 'error')
+        logger.warning(f"用户 {current_user.username} 请求不支持的模板类型：{data_type}")
         return redirect(url_for('import_export.index'))
+
+    # 写入表头（第1行）
+    ws.append(headers)
+
+    # 写入注释（第2行）
+    ws.append(comments)
+
+    # 样式：表头加粗居中，注释自动换行
+    bold_font = Font(bold=True)
+    center_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    left_align = Alignment(horizontal="left", vertical="center", wrap_text=True)
+
+    for cell in ws[1]:
+        cell.font = bold_font
+        cell.alignment = center_align
+
+    for cell in ws[2]:
+        cell.alignment = left_align
+
+    # 自动调整列宽
+    for col in ws.columns:
+        max_length = 0
+        column_letter = col[0].column_letter
+        for cell in col:
+            try:
+                if len(str(cell.value or "")) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        ws.column_dimensions[column_letter].width = min(max_length + 4, 60)
+
+    # 保存到内存流
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    # 返回文件（文件名带完整时间戳，避免同名覆盖）
+    download_name = f"{data_type}_导入模板_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=download_name
+    )
 
 
 @import_export_bp.route('/export/<data_type>')
@@ -70,13 +146,12 @@ def export(data_type):
     """导出数据为 Excel 文件"""
     try:
         if data_type == 'person':
-            # 使用人员专属导出函数（支持所有字段）
             file_path, filename = export_person_to_excel(current_user)
         else:
-            # 其他类型走通用处理器（未来扩展）
-            file_path, filename = export_data_to_excel(data_type, current_user)
+            flash(f'暂不支持 {data_type} 类型导出', 'warning')
+            logger.warning(f"用户 {current_user.username} 尝试导出不支持类型：{data_type}")
+            return redirect(url_for('import_export.index'))
 
-        # 强制刷新避免缓存
         return send_from_directory(
             directory=os.path.dirname(file_path),
             path=os.path.basename(file_path),
@@ -87,8 +162,6 @@ def export(data_type):
     except ValueError as ve:
         flash(f'导出失败：{str(ve)}', 'error')
         logger.warning(f"用户 {current_user.username} 导出 {data_type} 失败（ValueError）：{ve}")
-    except PermissionError:
-        flash('权限不足，无法导出该类型数据', 'error')
     except Exception as e:
         flash('导出过程中发生未知错误，请查看日志', 'error')
         logger.error(f"用户 {current_user.username} 导出 {data_type} 异常: {e}", exc_info=True)
@@ -112,7 +185,7 @@ def import_data():
         flash('未指定导入类型', 'error')
         return redirect(url_for('import_export.index'))
 
-    # 支持的文件类型校验
+    # 文件类型校验
     allowed_extensions = {'.xlsx', '.xls'}
     if not any(file.filename.lower().endswith(ext) for ext in allowed_extensions):
         flash('仅支持 .xlsx / .xls 文件', 'error')
@@ -120,15 +193,14 @@ def import_data():
 
     try:
         if data_type == 'person':
-            # 使用人员专属导入函数（真实写入 + 详细错误反馈）
             success, msg = import_person_from_excel(file, current_user)
         else:
-            # 其他类型走通用处理器（未来扩展）
-            success, msg = process_import_excel(file, data_type, current_user)
+            flash(f'暂不支持 {data_type} 类型导入', 'warning')
+            logger.warning(f"用户 {current_user.username} 尝试导入不支持类型：{data_type}")
+            return redirect(url_for('import_export.index'))
 
         flash(msg, 'success' if success else 'error')
 
-        # 导入成功后强制刷新列表（避免缓存）
         if success and data_type == 'person':
             return redirect(url_for('person.index', _refresh=int(time.time())))
 
@@ -140,7 +212,7 @@ def import_data():
         return redirect(url_for('import_export.index'))
 
 
-# 可选：添加简单的 API 接口，用于前端异步上传（未来扩展）
+# 可选：API 接口，用于未来前端异步进度查询
 @import_export_bp.route('/api/import/status', methods=['GET'])
 @login_required
 @permission_required('import_export:all')
