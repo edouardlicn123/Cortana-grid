@@ -2,6 +2,7 @@
 # 人员管理专用蓝图（优化终极版 - 代码更简洁、可读性提升、错误处理更一致，功能完全不变）
 # 更新：彻底解决列表页面缓存问题，删除/导入/编辑后立即刷新显示最新数据
 # 修复：人员列表分页尊重用户个人设置的“每页显示条数”（2026-01-07）
+# 2026-02-09：字段全面同步最新 schema，新增 relationship、household_number、is_key_person、key_categories 等
 
 import time
 from flask import Blueprint, render_template, request, redirect, url_for, flash, make_response
@@ -40,7 +41,7 @@ def index():
     # 关键修复：使用用户个人设置的分页大小，兜底 20
     per_page = current_user.page_size or 20
 
-    # 搜索参数
+    # 搜索参数（新增 relationship 和 is_key_person 筛选）
     name = request.args.get('name', '').strip().lower()
     id_card = request.args.get('id_card', '').strip()
     building = request.args.get('building', '').strip().lower()
@@ -48,6 +49,8 @@ def index():
     person_type = request.args.get('person_type', '').strip()
     household_address = request.args.get('household_address', '').strip().lower()
     family_id = request.args.get('family_id', '').strip()
+    relationship = request.args.get('relationship', '').strip().lower()
+    is_key_person = request.args.get('is_key_person', '')
 
     # 获取全量数据
     all_persons = get_all_persons()
@@ -62,9 +65,11 @@ def index():
         and (not person_type or p.get('person_type') == person_type)
         and (not household_address or household_address in p.get('household_address', '').lower())
         and (not family_id or family_id in p.get('family_id', ''))
+        and (not relationship or relationship in p.get('relationship', '').lower())
+        and (not is_key_person or str(p.get('is_key_person', 0)) == is_key_person)
     ]
 
-    # 分页计算（使用动态 per_page）
+    # 分页计算
     total = len(filtered_persons)
     total_pages = max(1, (total + per_page - 1) // per_page)
     start = (page - 1) * per_page
@@ -77,7 +82,7 @@ def index():
         total_pages=total_pages,
         current_page=page,
         total=total,
-        per_page=per_page  # 新增：传给模板，便于分页链接保留搜索参数
+        per_page=per_page
     ))
 
     # 强制浏览器不缓存页面
@@ -167,10 +172,20 @@ def view(pid):
         return redirect(url_for('person.index'))
 
     building = None
+    household_building = None
+
     if person.get('living_building_id'):
         building = get_building_by_id(person['living_building_id'])
 
-    return render_template('view_person.html', person=person, building=building)
+    if person.get('household_building_id'):
+        household_building = get_building_by_id(person['household_building_id'])
+
+    return render_template(
+        'view_person.html',
+        person=person,
+        building=building,
+        household_building=household_building
+    )
 
 
 # ========================== 删除人员 ==========================
@@ -188,19 +203,24 @@ def delete(pid):
 
 # ======================== 辅助函数 ========================
 def _extract_person_data(form) -> dict:
-    """从表单提取人员数据"""
+    """从表单提取人员数据（已同步所有字段）"""
     return {
         'name': form.get('name', '').strip(),
         'id_card': form.get('id_card', '').strip(),
+        'unique_id': form.get('unique_id', '').strip(),
+        'passport': form.get('passport', '').strip(),
+        'other_id_type': form.get('other_id_type', '').strip(),
         'phones': form.get('phones', '').strip(),
         'gender': form.get('gender'),
         'birth_date': form.get('birth_date', '').strip(),
         'person_type': form.get('person_type'),
+        'relationship': form.get('relationship', '').strip(),
         'living_building_id': form.get('living_building_id'),
         'address_detail': form.get('address_detail', '').strip(),
         'household_building_id': form.get('household_building_id'),
         'household_address': form.get('household_address', '').strip(),
         'family_id': form.get('family_id', '').strip(),
+        'household_number': form.get('household_number', '').strip(),
         'household_entry_date': form.get('household_entry_date', '').strip(),
         'is_separated': 'is_separated' in form,
         'current_residence': form.get('current_residence', '').strip(),
@@ -216,16 +236,14 @@ def _extract_person_data(form) -> dict:
         'work_study': form.get('work_study'),
         'health': form.get('health'),
         'notes': form.get('notes', '').strip(),
+        'images': None,  # 文件上传在路由中单独处理
         'is_key_person': 'is_key_person' in form,
-        'key_categories': ','.join(form.getlist('key_categories')),
-        'other_id_type': form.get('other_id_type'),
-        'passport': form.get('passport', '').strip(),
-        'household_number': form.get('household_number', '').strip(),
+        'key_categories': ','.join(form.getlist('key_categories')) if form.getlist('key_categories') else '',
     }
 
 
 def _validate_required_fields(data: dict) -> list:
-    """校验必填字段"""
+    """校验必填字段（保持原有三项）"""
     errors = []
     if not data['name']:
         errors.append('姓名不能为空')
@@ -237,37 +255,40 @@ def _validate_required_fields(data: dict) -> list:
 
 
 def _prepare_person_args(data: dict) -> dict:
-    """准备传给 repo 的参数（类型转换）"""
-    return {
+    """准备传给 repo 的参数（类型转换，字段完整同步）"""
+    args = {
         'name': data['name'],
-        'id_card': data['id_card'],
-        'phones': data['phones'],
-        'gender': data['gender'],
-        'birth_date': data['birth_date'],
-        'person_type': data['person_type'],
+        'id_card': data['id_card'] or None,
+        'unique_id': data['unique_id'] or None,
+        'passport': data['passport'] or None,
+        'other_id_type': data['other_id_type'] or None,
+        'phones': data['phones'] or None,
+        'gender': data['gender'] or None,
+        'birth_date': data['birth_date'] or None,
+        'person_type': data['person_type'] or '常住人口',
+        'relationship': data['relationship'] or None,
         'living_building_id': int(data['living_building_id']) if data['living_building_id'] else None,
         'address_detail': data['address_detail'],
         'household_building_id': int(data['household_building_id']) if data['household_building_id'] else None,
-        'household_address': data['household_address'],
-        'family_id': data['family_id'],
-        'household_entry_date': data['household_entry_date'],
+        'household_address': data['household_address'] or None,
+        'family_id': data['family_id'] or None,
+        'household_number': data['household_number'] or None,
+        'household_entry_date': data['household_entry_date'] or None,
         'is_separated': data['is_separated'],
-        'current_residence': data['current_residence'],
+        'current_residence': data['current_residence'] or None,
         'is_migrated_out': data['is_migrated_out'],
-        'household_exit_date': data['household_exit_date'],
-        'migration_destination': data['migration_destination'],
+        'household_exit_date': data['household_exit_date'] or None,
+        'migration_destination': data['migration_destination'] or None,
         'is_deceased': data['is_deceased'],
-        'death_date': data['death_date'],
-        'nationality': data['nationality'],
-        'political_status': data['political_status'],
-        'marital_status': data['marital_status'],
-        'education': data['education'],
-        'work_study': data['work_study'],
-        'health': data['health'],
-        'notes': data['notes'],
+        'death_date': data['death_date'] or None,
+        'nationality': data['nationality'] or None,
+        'political_status': data['political_status'] or None,
+        'marital_status': data['marital_status'] or None,
+        'education': data['education'] or None,
+        'work_study': data['work_study'] or None,
+        'health': data['health'] or None,
+        'notes': data['notes'] or None,
         'is_key_person': data['is_key_person'],
-        'key_categories': data['key_categories'],
-        'other_id_type': data['other_id_type'],
-        'passport': data['passport'],
-        'household_number': data.get('household_number'),
+        'key_categories': data['key_categories'] or None,
     }
+    return args

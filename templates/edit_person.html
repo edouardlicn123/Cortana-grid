@@ -1,4 +1,3 @@
-<!-- templates/edit_person.html - 基于旧版本完整恢复（2026-01-05） -->
 {% extends "base.html" %}
 {% block title %}{{ '编辑人员' if person else '添加人员' }}{% endblock %}
 
@@ -75,6 +74,14 @@
                                         <option value="常住人口" {% if not person or person.person_type == '常住人口' %}selected{% endif %}>常住人口</option>
                                         <option value="流动人口" {% if person and person.person_type == '流动人口' %}selected{% endif %}>流动人口</option>
                                     </select>
+                                </div>
+
+                                <!-- 与其他人员关系 -->
+                                <div class="col-md-12">
+                                    <label class="form-label">与其他人员关系</label>
+                                    <input type="text" name="relationship" class="form-control"
+                                           value="{{ person.relationship if person else '' }}"
+                                           placeholder="如：户主、配偶、子女、父母、租户等（自由填写）">
                                 </div>
 
                                 <!-- 使用其他证件 -->
@@ -159,6 +166,13 @@
                                     <label class="form-label">户编号</label>
                                     <input type="text" name="family_id" class="form-control" 
                                            value="{{ person.family_id if person else '' }}">
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label">户号</label>
+                                    <input type="text" name="household_number" class="form-control"
+                                           value="{{ person.household_number if person else '' }}"
+                                           placeholder="户口本上的户号">
                                 </div>
 
                                 <div class="col-md-4">
@@ -305,7 +319,7 @@
                                         </label>
                                     </div>
                                     <div id="key_categories_group" class="row g-3" style="display: {% if person and person.is_key_person %}block{% else %}none{% endif %};">
-                                        <label class="form-label fw-bold">重点类别（可多选）</label>
+                                        <label class="form-label fw-bold">重点类别（可多选，用逗号分隔保存）</label>
                                         {% set categories = ['独居老人', '留守儿童', '低保户', '残疾人', '精神障碍患者', '矫正对象', '社区矫正', '吸毒人员', '艾滋病患者', '信访人员', '涉邪教', '其他重点'] %}
                                         {% for cat in categories %}
                                         <div class="col-md-6">
@@ -446,4 +460,54 @@ document.addEventListener('DOMContentLoaded', function () {
 
 <!-- 引入通用联动脚本（照片预览 + 开关控制） -->
 <script src="{{ url_for('static', filename='js/person_edit.js') }}"></script>
+
+<!-- 新增字段的开关联动逻辑（与原有保持一致风格） -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // 人户分离
+    const isSeparated = document.getElementById('is_separated');
+    const currentResidenceGroup = document.getElementById('current_residence_group');
+    if (isSeparated && currentResidenceGroup) {
+        isSeparated.addEventListener('change', function () {
+            currentResidenceGroup.style.display = this.checked ? 'block' : 'none';
+        });
+    }
+
+    // 已迁出
+    const isMigratedOut = document.getElementById('is_migrated_out');
+    const migrationGroup = document.getElementById('migration_group');
+    if (isMigratedOut && migrationGroup) {
+        isMigratedOut.addEventListener('change', function () {
+            migrationGroup.style.display = this.checked ? 'block' : 'none';
+        });
+    }
+
+    // 已死亡
+    const isDeceased = document.getElementById('is_deceased');
+    const deathGroup = document.getElementById('death_group');
+    if (isDeceased && deathGroup) {
+        isDeceased.addEventListener('change', function () {
+            deathGroup.style.display = this.checked ? 'block' : 'none';
+        });
+    }
+
+    // 重点人员
+    const isKeyPerson = document.getElementById('is_key_person');
+    const keyCategoriesGroup = document.getElementById('key_categories_group');
+    if (isKeyPerson && keyCategoriesGroup) {
+        isKeyPerson.addEventListener('change', function () {
+            keyCategoriesGroup.style.display = this.checked ? 'block' : 'none';
+        });
+    }
+
+    // 其他证件
+    const hasOtherId = document.getElementById('has_other_id');
+    const otherIdGroup = document.getElementById('other_id_group');
+    if (hasOtherId && otherIdGroup) {
+        hasOtherId.addEventListener('change', function () {
+            otherIdGroup.style.display = this.checked ? 'block' : 'none';
+        });
+    }
+});
+</script>
 {% endblock %}

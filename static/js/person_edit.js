@@ -1,13 +1,14 @@
 // static/js/person_edit.js
-// 人员编辑页面专用 JS：所有联动逻辑 + 照片预览（最新版：其他证件类型 + 证件号联动）
+// 人员编辑页面专用 JS：所有联动逻辑 + 照片预览（最新版：支持所有新字段的开关联动）
 
 document.addEventListener('DOMContentLoaded', function () {
-    // 1. 照片预览（最多 3 张，包含已有照片数量限制）
+    // ==================== 1. 照片预览（最多 3 张，包含已有照片数量限制） ====================
     function previewImages(inputSelector, containerSelector, maxImages = 3) {
         const input = document.querySelector(inputSelector);
         const container = document.querySelector(containerSelector);
         if (!input || !container) return;
 
+        // 计算当前已有照片数量（编辑时已有上传的照片）
         const existingCount = container.querySelectorAll('img').length;
 
         input.addEventListener('change', function(e) {
@@ -17,39 +18,95 @@ document.addEventListener('DOMContentLoaded', function () {
             for (let file of files) {
                 if (!file.type.startsWith('image/')) continue;
                 if (existingCount + added >= maxImages) {
-                    alert(`照片最多 ${maxImages} 张`);
+                    alert(`照片最多允许上传 ${maxImages} 张（含已有照片）`);
                     break;
                 }
 
                 const reader = new FileReader();
-                reader.onload = ev => {
+                reader.onload = function(ev) {
                     const div = document.createElement('div');
-                    div.className = 'position-relative me-3 mb-3';
+                    div.className = 'position-relative text-center me-3 mb-3';
+                    
                     const img = document.createElement('img');
                     img.src = ev.target.result;
                     img.className = 'rounded shadow';
-                    img.style = 'width:180px;height:180px;object-fit:cover;';
-                    div.appendChild(img);
+                    img.style.width = '180px';
+                    img.style.height = '180px';
+                    img.style.objectFit = 'cover';
+                    
                     const small = document.createElement('small');
-                    small.className = 'd-block text-center mt-1 text-muted';
+                    small.className = 'd-block mt-1 text-muted';
                     small.textContent = file.name;
+                    
+                    div.appendChild(img);
                     div.appendChild(small);
                     container.appendChild(div);
                 };
                 reader.readAsDataURL(file);
                 added++;
             }
+
+            // 清空 input 值，防止重复选择同一文件不触发 change
+            input.value = '';
         });
     }
 
     previewImages('input[name="images"]', '#preview-container', 3);
 
-    // 2. 户籍小区选择联动：选“外地户籍”时显示详细地址
-    const householdSelect = document.getElementById('household_building_select');
+    // ==================== 2. 开关联动通用函数（可复用） ====================
+    function toggleGroup(switchId, groupId, clearOnHide = true) {
+        const switchEl = document.getElementById(switchId);
+        const groupEl = document.getElementById(groupId);
+        if (!switchEl || !groupEl) return;
+
+        const update = () => {
+            const isChecked = switchEl.checked;
+            groupEl.style.display = isChecked ? 'block' : 'none';
+            
+            if (!isChecked && clearOnHide) {
+                // 清空该组内所有输入框和选择框
+                groupEl.querySelectorAll('input[type="text"], input[type="date"], textarea, select').forEach(el => {
+                    el.value = '';
+                });
+                // 清空 checkbox（如果有）
+                groupEl.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                    cb.checked = false;
+                });
+            }
+        };
+
+        switchEl.addEventListener('change', update);
+        // 初始化状态
+        update();
+    }
+
+    // ==================== 3. 所有开关联动 ====================
+
+    // 是否使用其他证件
+    toggleGroup('has_other_id', 'other_id_group');
+
+    // 是否重点人员
+    toggleGroup('is_key_person', 'key_categories_group');
+
+    // 人户分离
+    toggleGroup('is_separated', 'current_residence_group');
+
+    // 是否已迁出本社区
+    toggleGroup('is_migrated_out', 'migration_group');
+
+    // 是否已死亡
+    toggleGroup('is_deceased', 'death_group');
+
+    // ==================== 4. 户籍小区选择联动（如果有“外地户籍”选项） ====================
+    // 注意：当前 edit_person.html 中户籍建筑是普通 select，没有 external 选项
+    // 如果未来添加“外地户籍”特殊值，可启用以下代码
+    /*
+    const householdSelect = document.querySelector('select[name="household_building_id"]');
     const householdAddressGroup = document.getElementById('household_address_group');
     if (householdSelect && householdAddressGroup) {
         householdSelect.addEventListener('change', function() {
-            if (this.value === 'external') {
+            // 假设添加了 value="external" 的选项
+            if (this.value === 'external' || !this.value) {
                 householdAddressGroup.style.display = 'block';
             } else {
                 householdAddressGroup.style.display = 'none';
@@ -57,65 +114,26 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     }
+    */
 
-    // 3. 是否重点人员开关联动
-    const keyPersonSwitch = document.getElementById('is_key_person');
-    const keyCategoriesGroup = document.getElementById('key_categories_group');
-    if (keyPersonSwitch && keyCategoriesGroup) {
-        keyPersonSwitch.addEventListener('change', function() {
-            keyCategoriesGroup.style.display = this.checked ? 'block' : 'none';
-            if (!this.checked) {
-                keyCategoriesGroup.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
-            }
+    // ==================== 5. 其他增强（可选） ====================
+    // 身份证输入时自动提示（如果需要）
+    const idCardInput = document.getElementById('id_card');
+    if (idCardInput) {
+        idCardInput.addEventListener('input', function() {
+            this.value = this.value.replace(/\s/g, '').toUpperCase();
         });
     }
 
-    // 4. 是否人户分离开关联动
-    const separatedSwitch = document.getElementById('is_separated');
-    const residenceGroup = document.getElementById('current_residence_group');
-    if (separatedSwitch && residenceGroup) {
-        separatedSwitch.addEventListener('change', function() {
-            residenceGroup.style.display = this.checked ? 'block' : 'none';
-            if (!this.checked) {
-                residenceGroup.querySelector('input[name="current_residence"]').value = '';
-            }
+    // 出生日期输入格式化提示（可选）
+    const birthInput = document.getElementById('birth_date');
+    if (birthInput) {
+        birthInput.addEventListener('input', function(e) {
+            let val = e.target.value.replace(/\D/g, '');
+            if (val.length > 8) val = val.slice(0, 8);
+            e.target.value = val;
         });
     }
 
-    // 5. 是否已迁出联动
-    const migratedSwitch = document.getElementById('is_migrated_out');
-    const migrationGroup = document.getElementById('migration_group');
-    if (migratedSwitch && migrationGroup) {
-        migratedSwitch.addEventListener('change', function() {
-            migrationGroup.style.display = this.checked ? 'block' : 'none';
-            if (!this.checked) {
-                migrationGroup.querySelectorAll('input').forEach(input => input.value = '');
-            }
-        });
-    }
-
-    // 6. 是否已死亡联动
-    const deceasedSwitch = document.getElementById('is_deceased');
-    const deathGroup = document.getElementById('death_group');
-    if (deceasedSwitch && deathGroup) {
-        deceasedSwitch.addEventListener('change', function() {
-            deathGroup.style.display = this.checked ? 'block' : 'none';
-            if (!this.checked) {
-                deathGroup.querySelector('input[name="death_date"]').value = '';
-            }
-        });
-    }
-
-    // 7. 是否使用其他证件开关联动（新增）
-    const otherIdSwitch = document.getElementById('has_other_id');
-    const otherIdGroup = document.getElementById('other_id_group');
-    if (otherIdSwitch && otherIdGroup) {
-        otherIdSwitch.addEventListener('change', function() {
-            otherIdGroup.style.display = this.checked ? 'block' : 'none';
-            if (!this.checked) {
-                otherIdGroup.querySelector('select[name="other_id_type"]').value = '';
-                otherIdGroup.querySelector('input[name="passport"]').value = '';
-            }
-        });
-    }
+    console.log('人员编辑页面 JS 初始化完成');
 });

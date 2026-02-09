@@ -32,8 +32,8 @@
                                 <label class="form-label fw-bold">导入类型 <span class="text-danger">*</span></label>
                                 <select name="import_type" class="form-select form-select-lg" required>
                                     <option value="">-- 请选择导入数据类型 --</option>
-                                    <option value="person">人员信息</option>
-                                    <option value="building">小区/建筑信息</option>
+                                    <option value="person">人员信息（姓名、身份证、关系、重点人员等）</option>
+                                    <option value="building">小区/建筑信息（名称、类型、网格、物业等）</option>
                                     <!-- 未来扩展：添加更多类型 -->
                                     <!-- <option value="grid">网格信息</option> -->
                                     <!-- <option value="vehicle">车辆信息</option> -->
@@ -53,7 +53,7 @@
                         <div class="mt-3">
                             <small class="text-muted">
                                 <i class="bi bi-info-circle me-1"></i>
-                                请严格按照模板格式填写，仅支持 .xlsx 格式（Excel 2007+）
+                                请严格按照模板格式填写，仅支持 .xlsx 格式（Excel 2007+）。人员导入支持所有字段（关系、重点类别、户号等）
                             </small>
                         </div>
                     </form>
@@ -66,13 +66,13 @@
                     <h4 class="mb-0"><i class="bi bi-file-earmark-spreadsheet me-2"></i>下载导入模板</h4>
                 </div>
                 <div class="card-body p-5">
-                    <p class="text-muted mb-4">请选择需要的数据模板，下载后按说明填写再导入。</p>
+                    <p class="text-muted mb-4">请选择需要的数据模板，下载后按注释说明填写再导入。</p>
                     <div class="row g-4">
                         <div class="col-md-6">
                             <div class="border rounded p-4 text-center hover-shadow transition">
                                 <i class="bi bi-people-fill text-primary" style="font-size: 3rem;"></i>
                                 <h5 class="mt-3">人员信息模板</h5>
-                                <p class="text-muted small">包含姓名、身份证、地址、类型等字段</p>
+                                <p class="text-muted small">包含姓名、身份证、关系、重点人员、户籍、民族、政治面貌等全部字段</p>
                                 <a href="{{ url_for('import_export.download_template', data_type='person') }}" 
                                    class="btn btn-outline-primary">
                                     <i class="bi bi-download me-2"></i>下载模板
@@ -83,7 +83,7 @@
                             <div class="border rounded p-4 text-center hover-shadow transition">
                                 <i class="bi bi-building-fill text-info" style="font-size: 3rem;"></i>
                                 <h5 class="mt-3">小区/建筑模板</h5>
-                                <p class="text-muted small">包含名称、类型、网格、户数、物业等字段</p>
+                                <p class="text-muted small">包含名称、类型、网格、户数、物业费、电梯数、经纬度等完整字段</p>
                                 <a href="{{ url_for('import_export.download_template', data_type='building') }}" 
                                    class="btn btn-outline-info">
                                     <i class="bi bi-download me-2"></i>下载模板
@@ -101,13 +101,13 @@
                     <h4 class="mb-0"><i class="bi bi-cloud-download-fill me-2"></i>数据导出</h4>
                 </div>
                 <div class="card-body p-5">
-                    <p class="text-muted mb-4">导出当前系统中的数据为 Excel 文件，可用于备份或分析。</p>
+                    <p class="text-muted mb-4">导出当前系统中的数据为 Excel 文件，可用于备份、分析或上报。</p>
                     <div class="row g-4">
                         <div class="col-md-6">
                             <div class="border rounded p-4 text-center hover-shadow transition">
                                 <i class="bi bi-person-lines-fill text-success" style="font-size: 3rem;"></i>
                                 <h5 class="mt-3">导出全部人员</h5>
-                                <p class="text-muted small">包含所有字段及重点人员标记</p>
+                                <p class="text-muted small">包含所有字段（姓名、身份证、关系、重点标记、户号、民族等）</p>
                                 <a href="{{ url_for('import_export.export', data_type='person') }}" 
                                    class="btn btn-success">
                                     <i class="bi bi-box-arrow-down me-2"></i>立即导出
@@ -118,7 +118,7 @@
                             <div class="border rounded p-4 text-center hover-shadow transition">
                                 <i class="bi bi-buildings text-warning" style="font-size: 3rem;"></i>
                                 <h5 class="mt-3">导出全部小区/建筑</h5>
-                                <p class="text-muted small">包含物业、设施、联系人等完整信息</p>
+                                <p class="text-muted small">包含名称、类型、网格、物业、电梯、经纬度、联系人等全部信息</p>
                                 <a href="{{ url_for('import_export.export', data_type='building') }}" 
                                    class="btn btn-warning">
                                     <i class="bi bi-box-arrow-down me-2"></i>立即导出
@@ -132,11 +132,9 @@
             <!-- 操作提示 -->
             <div class="text-center text-muted small">
                 <p>如遇导入问题，请检查文件格式是否与模板一致，或联系系统管理员。</p>
-                <p>Cortana Grid © 2026 - 为社区治理而生</p>
+                <p>Cortana Grid © 2026 - 为社区网格化治理而生</p>
             </div>
         </div>
     </div>
 </div>
 {% endblock %}
-
-

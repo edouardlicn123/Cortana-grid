@@ -16,12 +16,23 @@
         width: 30%;
         background-color: #f8f9fa;
     }
+    .detail-table td {
+        word-break: break-all;
+    }
+    .section-title {
+        font-size: 1.1rem;
+        font-weight: bold;
+        color: #0d6efd;
+        margin: 1.5rem 0 0.75rem;
+        border-bottom: 2px solid #0d6efd;
+        padding-bottom: 0.5rem;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-lg-8">
+    <div class="col-lg-10 col-xl-9">
         <div class="card shadow mb-5">
             <div class="card-header py-3 d-flex justify-content-between align-items-center bg-primary text-white">
                 <h5 class="m-0 font-weight-bold">
@@ -31,19 +42,23 @@
                     <i class="bi bi-arrow-left me-1"></i>返回列表
                 </a>
             </div>
-            <div class="card-body">
-                <div class="row">
+
+            <div class="card-body p-4 p-md-5">
+                <!-- 基本信息 -->
+                <div class="section-title">基本信息</div>
+                <div class="row mb-4">
                     <div class="col-md-6">
-                        <table class="table table-bordered detail-table">
-                            <tr><th>姓名</th><td>{{ person.name }}</td></tr>
+                        <table class="table table-bordered detail-table mb-0">
+                            <tr><th>姓名</th><td><strong>{{ person.name }}</strong></td></tr>
                             <tr><th>身份证号</th><td>{{ person.id_card or '未填写' }}</td></tr>
                             <tr><th>联系电话</th><td>{{ person.phones or '未填写' }}</td></tr>
                             <tr><th>性别</th><td>{{ person.gender or '未填写' }}</td></tr>
                             <tr><th>出生日期</th><td>{{ person.birth_date or '未填写' }}</td></tr>
+                            <tr><th>与其他人员关系</th><td>{{ person.relationship or '未填写' }}</td></tr>
                         </table>
                     </div>
                     <div class="col-md-6">
-                        <table class="table table-bordered detail-table">
+                        <table class="table table-bordered detail-table mb-0">
                             <tr><th>现住建筑</th>
                                 <td>
                                     {% if building %}
@@ -53,19 +68,110 @@
                                     {% endif %}
                                 </td>
                             </tr>
-                            <tr><th>户籍地址</th><td>{{ person.household_address or '未填写' }}</td></tr>
-                            <tr><th>政治面貌</th><td>{{ person.political_status or '未填写' }}</td></tr>
+                            <tr><th>现住详细门牌</th><td>{{ person.address_detail or '未填写' }}</td></tr>
                             <tr><th>人员类型</th><td>{{ person.person_type or '常住人口' }}</td></tr>
-                            <tr><th>备注</th><td>{{ person.notes or '无' }}</td></tr>
+                            <tr><th>重点人员</th>
+                                <td>
+                                    {% if person.is_key_person %}
+                                        <span class="badge bg-danger">是</span>
+                                        {% if person.key_categories %}
+                                            <br><small class="text-muted">{{ person.key_categories }}</small>
+                                        {% endif %}
+                                    {% else %}
+                                        否
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr><th>照片</th>
+                                <td>
+                                    {% if person.images %}
+                                        <div class="d-flex flex-wrap gap-2">
+                                            {% for img in person.images.split(',') if img.strip() %}
+                                            <img src="{{ url_for('static', filename='uploads/' + img.strip()) }}" 
+                                                 class="rounded shadow" style="width:120px; height:120px; object-fit:cover;">
+                                            {% endfor %}
+                                        </div>
+                                    {% else %}
+                                        未上传照片
+                                    {% endif %}
+                                </td>
+                            </tr>
                         </table>
                     </div>
                 </div>
 
-                <div class="text-center mt-4">
-                    <a href="{{ url_for('person.edit', pid=person.id) }}" class="btn btn-warning me-3">
+                <!-- 户籍信息 -->
+                <div class="section-title">户籍信息</div>
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <table class="table table-bordered detail-table mb-0">
+                            <tr><th>户籍小区/建筑</th>
+                                <td>
+                                    {% if household_building %}
+                                        {{ household_building.name }} ({{ household_building.type_display or '未知类型' }})
+                                    {% else %}
+                                        未设置或非本社区
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr><th>户籍详细地址</th><td>{{ person.household_address or '未填写' }}</td></tr>
+                            <tr><th>户编号</th><td>{{ person.family_id or '未填写' }}</td></tr>
+                            <tr><th>户号</th><td>{{ person.household_number or '未填写' }}</td></tr>
+                            <tr><th>户籍迁入日期</th><td>{{ person.household_entry_date or '未填写' }}</td></tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-bordered detail-table mb-0">
+                            <tr><th>人户分离</th><td>{{ '是' if person.is_separated else '否' }}</td></tr>
+                            {% if person.is_separated %}
+                            <tr><th>实际居住地</th><td>{{ person.current_residence or '未填写' }}</td></tr>
+                            {% endif %}
+                            <tr><th>已迁出本社区</th><td>{{ '是' if person.is_migrated_out else '否' }}</td></tr>
+                            {% if person.is_migrated_out %}
+                            <tr><th>迁出日期</th><td>{{ person.household_exit_date or '未填写' }}</td></tr>
+                            <tr><th>迁往地</th><td>{{ person.migration_destination or '未填写' }}</td></tr>
+                            {% endif %}
+                            <tr><th>已死亡</th><td>{{ '是' if person.is_deceased else '否' }}</td></tr>
+                            {% if person.is_deceased %}
+                            <tr><th>死亡日期</th><td>{{ person.death_date or '未填写' }}</td></tr>
+                            {% endif %}
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 次要信息 -->
+                <div class="section-title">次要信息</div>
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <table class="table table-bordered detail-table mb-0">
+                            <tr><th>民族</th><td>{{ person.nationality or '未填写' }}</td></tr>
+                            <tr><th>政治面貌</th><td>{{ person.political_status or '未填写' }}</td></tr>
+                            <tr><th>婚姻状况</th><td>{{ person.marital_status or '未填写' }}</td></tr>
+                            <tr><th>文化程度</th><td>{{ person.education or '未填写' }}</td></tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-bordered detail-table mb-0">
+                            <tr><th>工作/学习情况</th><td>{{ person.work_study or '未填写' }}</td></tr>
+                            <tr><th>健康状况</th><td>{{ person.health or '未填写' }}</td></tr>
+                            <tr><th>其他证件类型</th><td>{{ person.other_id_type or '无' }}</td></tr>
+                            <tr><th>其他证件号码</th><td>{{ person.passport or '未填写' }}</td></tr>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 备注 -->
+                <div class="section-title">备注</div>
+                <div class="alert alert-light border p-4 mb-0">
+                    {{ person.notes or '暂无备注信息' }}
+                </div>
+
+                <!-- 操作按钮 -->
+                <div class="text-center mt-5">
+                    <a href="{{ url_for('person.edit', pid=person.id) }}" class="btn btn-warning btn-lg px-5 me-3 shadow">
                         <i class="bi bi-pencil-square me-1"></i>编辑人员信息
                     </a>
-                    <a href="{{ url_for('person.index') }}" class="btn btn-secondary">
+                    <a href="{{ url_for('person.index') }}" class="btn btn-secondary btn-lg px-5 shadow">
                         <i class="bi bi-list-ul me-1"></i>返回人员列表
                     </a>
                 </div>

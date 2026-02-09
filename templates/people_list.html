@@ -1,4 +1,3 @@
-<!-- templates/people_list.html -->
 {% extends "base.html" %}
 {% block title %}人员管理{% endblock %}
 
@@ -21,7 +20,7 @@
 
                 <div class="card-body">
 
-                    <!-- 新增：过滤表单 -->
+                    <!-- 过滤表单（保持原布局，新增少量筛选条件） -->
                     <div class="filter-form">
                         <form method="GET" class="row g-3 align-items-end">
                             <div class="col-md-3 col-sm-6">
@@ -49,6 +48,21 @@
                                     <option value="流动人口" {% if request.args.get('person_type') == '流动人口' %}selected{% endif %}>流动人口</option>
                                 </select>
                             </div>
+
+                            <!-- 新增筛选：关系 + 重点人员 -->
+                            <div class="col-md-3 col-sm-6">
+                                <label class="form-label">关系</label>
+                                <input type="text" name="relationship" class="form-control" value="{{ request.args.get('relationship', '') }}" placeholder="如：配偶、子女">
+                            </div>
+                            <div class="col-md-3 col-sm-6">
+                                <label class="form-label">重点人员</label>
+                                <select name="is_key_person" class="form-select">
+                                    <option value="">不限</option>
+                                    <option value="1" {% if request.args.get('is_key_person') == '1' %}selected{% endif %}>是</option>
+                                    <option value="0" {% if request.args.get('is_key_person') == '0' %}selected{% endif %}>否</option>
+                                </select>
+                            </div>
+
                             <div class="col-md-3 col-sm-6">
                                 <label class="form-label">户籍详细地址</label>
                                 <input type="text" name="household_address" class="form-control" value="{{ request.args.get('household_address', '') }}" placeholder="模糊搜索">
@@ -69,18 +83,20 @@
                         </form>
                     </div>
 
-                    <!-- 人员表格 -->
+                    <!-- 人员表格（新增“关系”和“重点”两列，调整宽度平衡） -->
                     <div class="table-responsive">
                         <table class="table table-hover table-bordered align-middle">
                             <thead class="table-light">
                                 <tr>
                                     <th width="5%">#</th>
-                                    <th width="120px">姓名</th>
-                                    <th width="210px">身份证号</th>
-                                    <th width="180px">联系电话</th>
-                                    <th width="190px">小区/建筑</th>
-                                    <th width="160px">房号</th>
-                                    <th width="20%" class="text-center">操作</th>
+                                    <th width="110px">姓名</th>
+                                    <th width="190px">身份证号</th>
+                                    <th width="160px">联系电话</th>
+                                    <th width="180px">小区/建筑</th>
+                                    <th width="140px">房号</th>
+                                    <th width="130px">关系</th>
+                                    <th width="100px">重点</th>
+                                    <th width="18%" class="text-center">操作</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -88,13 +104,13 @@
                                     {% for p in persons %}
                                     <tr>
                                         <td>{{ loop.index + (current_page - 1) * per_page }}</td>
-                                        <td class="text-truncate" style="max-width: 120px;" title="{{ p.name }}">
+                                        <td class="text-truncate" style="max-width: 110px;" title="{{ p.name }}">
                                             <strong>{{ p.name }}</strong>
                                         </td>
-                                        <td class="text-monospace small" style="max-width: 210px;">
+                                        <td class="text-monospace small" style="max-width: 190px;">
                                             {{ p.id_card or '未填写' }}
                                         </td>
-                                        <td style="max-width: 180px;" class="text-truncate" title="{{ p.phones or '' }}">
+                                        <td style="max-width: 160px;" class="text-truncate" title="{{ p.phones or '' }}">
                                             {% if p.phones %}
                                                 {% if p.phones|length > 14 %}
                                                     {{ p.phones[:14] }}...
@@ -105,15 +121,27 @@
                                                 未填写
                                             {% endif %}
                                         </td>
-                                        <td class="text-truncate" style="max-width: 190px;" title="{{ p.living_building_name or '未设置' }}">
+                                        <td class="text-truncate" style="max-width: 180px;" title="{{ p.living_building_name or '未设置' }}">
                                             {% if p.living_building_name %}
                                                 {{ p.living_building_name }}
                                             {% else %}
-                                                <span class="text-muted">未设置居住建筑</span>
+                                                <span class="text-muted">未设置</span>
                                             {% endif %}
                                         </td>
-                                        <td class="text-truncate" style="max-width: 160px;" title="{{ p.address_detail or '未填写' }}">
+                                        <td class="text-truncate" style="max-width: 140px;" title="{{ p.address_detail or '未填写' }}">
                                             {{ p.address_detail or '未填写' }}
+                                        </td>
+                                        <!-- 新增：关系 -->
+                                        <td class="text-truncate" style="max-width: 130px;" title="{{ p.relationship or '' }}">
+                                            {{ p.relationship or '未填写' }}
+                                        </td>
+                                        <!-- 新增：重点人员 -->
+                                        <td class="text-center">
+                                            {% if p.is_key_person %}
+                                                <span class="badge bg-danger">是</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">否</span>
+                                            {% endif %}
                                         </td>
                                         <td class="text-center">
                                             <a href="{{ url_for('person.view', pid=p.id) }}" class="btn btn-info btn-sm me-1" title="查看详情">
@@ -133,7 +161,7 @@
                                     {% endfor %}
                                 {% else %}
                                     <tr>
-                                        <td colspan="7" class="text-center text-muted py-4">
+                                        <td colspan="9" class="text-center text-muted py-4">
                                             <i class="bi bi-inbox fs-1 d-block mb-3"></i>
                                             {% if request.args|length > 0 %}
                                                 未找到匹配的人员记录
@@ -147,7 +175,7 @@
                         </table>
                     </div>
 
-                    <!-- 分页导航（已修复 page 参数重复问题） -->
+                    <!-- 分页导航（保持原逻辑） -->
                     {% if total_pages > 1 %}
                     <nav aria-label="人员分页">
                         <ul class="pagination justify-content-center mt-4">
