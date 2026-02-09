@@ -1,17 +1,21 @@
 # code2ai_config.toml
 # Cortana Grid 项目专属源码汇总配置
-# 最后更新: 2026-01-14
-# 新增: 完全排除所有文件名中包含 "bootstrap" 的文件（不区分大小写）
+# 最后更新: 2026-02-09
+# 变更记录:
+#   - 项目版本更新至 v2.4（关系字段、动态模板生成、人员导入导出完整实现）
+#   - 强制包含最新核心文件（import_export 相关）
+#   - 排除日志文件和可能的静态模板目录
+#   - 继续排除所有 bootstrap 相关文件
 
 [project]
 name = "Cortana Grid"
-version = "v2.2 (生产级稳定版)"
-description = "社区网格化人口管理系统"
+version = "v2.4 (关系字段 + 动态模板版)"
+description = "社区网格化人口管理系统（生产级稳定版）"
 
 [include]
 extensions = [
-    ".py", ".html", ".css", ".js", ".json", ".yaml", ".yml", ".toml", ".ini", ".cfg",
-    ".sh", ".sql", ".md", ".txt"
+    ".py", ".html", ".css", ".js", ".json", ".yaml", ".yml", ".toml", ".ini", ".cfg", ".env",
+    ".sh", ".sql", ".md", ".txt", ".rst"
 ]
 
 [special_include]
@@ -21,7 +25,9 @@ force_include_patterns = [
     "includes/",            # 模板组件
     "errors/",              # 错误页面
     "static/js/",           # 自定义 js
-    "static/css/style.css"  # 主样式
+    "static/css/style.css", # 主样式
+    "services/import_export_",  # 所有导入导出服务文件
+    "routes/import_export"      # 导入导出路由
 ]
 
 # 特定文件名（精确匹配，相对路径）
@@ -31,9 +37,12 @@ force_include_files = [
     "utils.py",
     "schema.sql",
     "run.sh",
+    "run2.sh",
     "requirements.txt",
-    "Dockerfile",           # 如果有
-    "README.md"
+    "code2ai.py",
+    "code2ai_config.toml",
+    "README.md",
+    "Dockerfile",           # 如果存在
 ]
 
 [exclude]
@@ -46,11 +55,13 @@ dirs = [
     ".venv",
     "venv",
     "env",
-    "instance",             # 数据库目录
-    "static/uploads",       # 用户上传照片
-    "downloads",            # 导入导出文件
-    "code2ai",              # 本工具输出目录
-    "migrations/versions",  # 如果以后用 alembic
+    "instance",                 # 数据库目录
+    "static/uploads",           # 用户上传照片
+    "downloads",                # 导入导出文件
+    "code2ai",                  # 本工具输出目录
+    "migrations/versions",      # alembic 版本目录
+    "static/templates/excel",   # 如果使用静态模板目录
+    "logs"                      # 日志目录（如果有）
 ]
 
 files = [
@@ -59,20 +70,28 @@ files = [
     "Thumbs.db",
     "*.sqlite",
     "*.sqlite3",
-    "*.db"
+    "*.db",
+    "*.log",
+    "*.pyc",
+    "*.pyo",
+    "*.bak",
+    "*.swp"
 ]
 
 extensions = [
     ".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico", ".webp", ".bmp",
-    ".woff", ".woff2", ".ttf", ".eot", ".pdf", ".zip", ".tar.gz"
+    ".woff", ".woff2", ".ttf", ".eot", ".pdf", ".zip", ".tar.gz", ".rar"
 ]
 
-# 新增：文件名模式排除（支持简单包含匹配，不区分大小写）
+# 文件名模式排除（支持简单包含匹配，不区分大小写）
 filename_patterns = [
-    "bootstrap"             # 排除所有文件名中包含 bootstrap 的文件（如 bootstrap.min.css、bootstrap.bundle.js 等）
+    "bootstrap",            # 排除所有文件名中包含 bootstrap 的文件
+    "jquery",               # 如有使用，可继续排除
+    "fontawesome"           # 如有使用，可继续排除
 ]
 
 [output]
 default_output_dir = "code2ai"
 filename_prefix = "cortana_grid_code_"
-max_file_size_kb = 1200          # 单个文件超过 1.2MB 跳过（防止输出文件爆炸）
+max_file_size_kb = 1200          # 单个文件超过 1.2MB 跳过（防止输出文件过大）
+timestamp_format = "%Y%m%d_%H%M%S"  # 输出文件名时间戳格式（可自定义）
